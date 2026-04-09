@@ -1,54 +1,119 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, MapPin, Copy, CheckCircle, AlertCircle, Loader2, Navigation } from 'lucide-react';
+import { Shield, Copy, CheckCircle, AlertCircle, Navigation, MapPin, Target, Crosshair } from 'lucide-react';
+import { MapContainer, TileLayer, Polygon, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { base44 } from '@/api/base44Client';
 import {
-  generateSentinelID, getHierarchy, getHexCenter,
+  generateSentinelID, getHierarchy, getHexCenter, getHexBoundary,
   generateGoogleMapsLink, generateAppleMapsLink,
   detectCountry, formatCoordinates, RESOLUTION
 } from '../lib/h3core';
 import { translate } from '../lib/i18n';
 import LandmarkMapper from '../components/LandmarkMapper';
 import HexBackground from '../components/HexBackground';
+import { latLngToCell, cellToBoundary } from 'h3-js';
+
+// Fix leaflet default icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 /**
- * HEX-LOCK SEQUENCE animation component.
- * Simulates a hexagon "collapsing" from atmosphere to ground point.
+ * GPS ACCURACY → H3 RESOLUTION MAPPING
+ * ─────────────────────────────────────────────────────────────
+ * accuracy > 200m  → Res-7  "Ghost Hexagon" (~5km²)  — orientation only
+ * accuracy 50–200m → Res-8  "Refining"      (~0.7km²) — parish level
+ * accuracy < 50m   → Res-9  "Locked"        (~174m²)  — Sentinel ID
+ * Manual override  → Res-9  "Confirmed"     (~174m²)  — user-placed pin
+ * Save unlocks at: accuracy ≤ 10m OR manual confirm
+ * ─────────────────────────────────────────────────────────────
  */
+function getResolutionForAccuracy(accuracy) {
+  if (accuracy > 200) return { res: 7, label: 'Ghost', phase: 'ghost' };
+  if (accuracy > 50)  return { res: 8, label: 'Refining', phase: 'refining' };
+  return { res: 9, label: 'Locked', phase: 'locked' };
+}
+
+const STATUS_STAGES = [
+  { phase: 'idle',      text: 'Ready to acquire GPS signal', color: 'text-slate-500' },
+  { phase: 'searching', text: 'Searching for satellites...', color: 'text-amber-400' },
+  { phase: 'ghost',     text: 'Satellite found — rendering Ghost Hexagon (Res-7)...', color: 'text-blue-400' },
+  { phase: 'refining',  text: 'Refining location — upgrading to Res-8...', color: 'text-blue-400' },
+  { phase: 'locked',    text: '✓ Sentinel ID Locked at Res-9', color: 'text-emerald-400' },
+  { phase: 'manual',    text: '✓ Manual location confirmed — Sentinel ID ready', color: 'text-emerald-400' },
+  { phase: 'error',     text: 'GPS unavailable — use manual map placement', color: 'text-red-400' },
+];
+
+/** Map click handler for manual override */
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) { onMapClick(e.latlng.lat, e.latlng.lng); }
+  });
+  return null;
+}
+
+/** Animated hex polygon on the map */
+function HexPolygon({ h3Index, phase }) {
+  if (!h3Index) return null;
+  const boundary = cellToBoundary(h3Index); // [[lat,lng],...]
+  const positions = boundary.map(([lat, lng]) => [lat, lng]);
+
+  const colorMap = {
+    ghost:    { color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.08, weight: 1.5, dashArray: '6,4' },
+    refining: { color: '#60A5FA', fillColor: '#3B82F6', fillOpacity: 0.15, weight: 2, dashArray: '3,2' },
+    locked:   { color: '#10B981', fillColor: '#10B981', fillOpacity: 0.20, weight: 2.5, dashArray: null },
+    manual:   { color: '#10B981', fillColor: '#10B981', fillOpacity: 0.22, weight: 2.5, dashArray: null },
+  };
+
+  const style = colorMap[phase] || colorMap.ghost;
+  return (
+    <Polygon
+      positions={positions}
+      pathOptions={{
+        color: style.color,
+        fillColor: style.fillColor,
+        fillOpacity: style.fillOpacity,
+        weight: style.weight,
+        dashArray: style.dashArray,
+      }}
+    />
+  );
+}
+
+/** HexLock animation — collapses from Res-7 to Res-9 */
 function HexLockAnimation({ phase }) {
-  const scales = [3.5, 2.2, 1.4, 1.0];
-  const opacities = [0.15, 0.25, 0.5, 1.0];
-  const activeIdx = phase === 'acquiring' ? 0 : phase === 'resolving' ? 1 : phase === 'locking' ? 2 : 3;
+  const rings = [
+    { scale: 3.2, show: ['ghost', 'refining', 'locked', 'manual'] },
+    { scale: 2.0, show: ['refining', 'locked', 'manual'] },
+    { scale: 1.0, show: ['locked', 'manual'] },
+  ];
+
+  const colors = { ghost: '#3B82F6', refining: '#60A5FA', locked: '#10B981', manual: '#10B981' };
+  const c = colors[phase] || '#3B82F6';
 
   return (
-    <div className="relative w-48 h-48 mx-auto flex items-center justify-center">
-      {scales.map((scale, i) => (
-        <div
-          key={i}
-          className="absolute transition-all duration-700"
-          style={{
-            transform: `scale(${i <= activeIdx ? scale : scales[scales.length - 1]})`,
-            opacity: i <= activeIdx ? opacities[i] : 0,
-          }}
-        >
-          <svg viewBox="0 0 100 100" width="80" height="80">
-            <polygon
-              points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
-              fill="none"
-              stroke={phase === 'locked' ? '#10B981' : '#3B82F6'}
-              strokeWidth={phase === 'locked' && i === 3 ? 2.5 : 1.5}
-              style={{
-                filter: phase === 'locked' && i === 3 ? 'drop-shadow(0 0 8px #10B981)' : 'drop-shadow(0 0 4px #3B82F6)',
-              }}
-            />
+    <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
+      {rings.map(({ scale, show }, i) => (
+        <div key={i} className="absolute transition-all duration-700"
+          style={{ transform: `scale(${show.includes(phase) ? scale : 4})`, opacity: show.includes(phase) ? (i === 0 ? 0.25 : i === 1 ? 0.5 : 1) : 0 }}>
+          <svg viewBox="0 0 80 80" width="72" height="72">
+            <polygon points="40,4 76,22 76,58 40,76 4,58 4,22"
+              fill="none" stroke={c} strokeWidth={i === 2 ? 2.5 : 1.5}
+              style={{ filter: `drop-shadow(0 0 ${i === 2 ? 8 : 3}px ${c})` }} />
           </svg>
         </div>
       ))}
-      {/* Center pulse */}
-      <div className={`absolute w-4 h-4 rounded-full transition-all duration-500 ${
-        phase === 'locked'
-          ? 'bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.8)]'
-          : 'bg-blue-400 animate-ping shadow-[0_0_10px_rgba(59,130,246,0.6)]'
+      <div className={`absolute w-3 h-3 rounded-full transition-all duration-500 ${
+        phase === 'locked' || phase === 'manual'
+          ? 'bg-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.8)]'
+          : phase === 'searching' || phase === 'ghost' || phase === 'refining'
+          ? 'bg-blue-400 animate-ping'
+          : 'bg-slate-600'
       }`} />
     </div>
   );
@@ -59,53 +124,114 @@ const STEPS = ['locate', 'anchor', 'certify'];
 export default function GetMyID({ lang = 'en' }) {
   const navigate = useNavigate();
   const tr = (key) => translate(lang, key);
+  const watchRef = useRef(null);
+  const mapRef = useRef(null);
 
-  const [step, setStep] = useState(0); // 0=locate, 1=anchor, 2=certify
-  const [gpsPhase, setGpsPhase] = useState('idle'); // idle|acquiring|resolving|locking|locked|error
-  const [gpsData, setGpsData] = useState(null);
+  const [step, setStep] = useState(0);
+  const [phase, setPhase] = useState('idle');
+  const [currentH3, setCurrentH3] = useState(null);
+  const [currentRes, setCurrentRes] = useState(null);
+  const [accuracy, setAccuracy] = useState(null);
+  const [coords, setCoords] = useState(null);
   const [sentinelData, setSentinelData] = useState(null);
+  const [manualPin, setManualPin] = useState(null);
   const [savedAddress, setSavedAddress] = useState(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [accuracy, setAccuracy] = useState(null);
+  const [showMap, setShowMap] = useState(false);
 
+  // Derived: can the user save?
+  const canSave = phase === 'locked' && accuracy !== null && accuracy <= 10
+    || phase === 'manual';
+
+  const statusStage = STATUS_STAGES.find(s => s.phase === phase) || STATUS_STAGES[0];
+
+  /** STEP 1: Immediate low-accuracy fix for Ghost Hexagon */
   const acquireGPS = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGpsPhase('error');
-      return;
-    }
-    setGpsPhase('acquiring');
+    setPhase('searching');
+    setShowMap(true);
 
-    // Simulate hex-lock sequence phases
-    setTimeout(() => setGpsPhase('resolving'), 1200);
-    setTimeout(() => setGpsPhase('locking'), 2400);
-
+    // Pass 1: Low accuracy, cached ok — gets a fix in ~1–2 seconds
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude, accuracy: acc } = position.coords;
+      (pos) => {
+        const { latitude, longitude, accuracy: acc } = pos.coords;
+        const { res, phase: p } = getResolutionForAccuracy(acc);
+        const h3 = latLngToCell(latitude, longitude, res);
+        const center = getHexCenter(h3);
+
+        setCoords({ latitude, longitude });
         setAccuracy(Math.round(acc));
+        setCurrentH3(h3);
+        setCurrentRes(res);
+        setPhase(p);
 
-        const result = generateSentinelID(latitude, longitude, RESOLUTION.SENTINEL);
-        const hierarchy = getHierarchy(result.h3_index);
-        const center = getHexCenter(result.h3_index);
-        const country = detectCountry(latitude, longitude);
+        // Pan map to location
+        if (mapRef.current) {
+          mapRef.current.setView([latitude, longitude], res === 7 ? 13 : res === 8 ? 15 : 17);
+        }
 
-        setGpsData({ latitude, longitude, country });
-        setSentinelData({ ...result, hierarchy, center, country });
-        setTimeout(() => setGpsPhase('locked'), 600);
+        if (res === 9) {
+          finalizeSentinel(latitude, longitude, h3);
+        }
       },
-      (err) => {
-        setGpsPhase('error');
-        console.error('GPS error:', err);
+      () => { setPhase('error'); },
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 5000 }
+    );
+
+    // Pass 2: High accuracy watch — refines progressively
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy: acc } = pos.coords;
+        const { res, phase: p } = getResolutionForAccuracy(acc);
+        const h3 = latLngToCell(latitude, longitude, res);
+
+        setCoords({ latitude, longitude });
+        setAccuracy(Math.round(acc));
+        setCurrentH3(h3);
+        setCurrentRes(res);
+        setPhase(p);
+
+        if (mapRef.current) {
+          mapRef.current.setView([latitude, longitude], res === 9 ? 17 : res === 8 ? 15 : 13);
+        }
+
+        if (p === 'locked') {
+          finalizeSentinel(latitude, longitude, h3);
+          navigator.geolocation.clearWatch(watchRef.current);
+        }
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      () => { setPhase('error'); },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
     );
   }, []);
 
-  const handleSaveAddress = async (landmarks = []) => {
-    if (!sentinelData || !gpsData) return;
-    setSaving(true);
+  function finalizeSentinel(lat, lng, h3Index) {
+    const hierarchy = getHierarchy(h3Index);
+    const center = getHexCenter(h3Index);
+    const country = detectCountry(lat, lng);
+    const result = generateSentinelID(lat, lng, RESOLUTION.SENTINEL);
+    setSentinelData({ ...result, h3_index: h3Index, hierarchy, center, country });
+  }
 
+  /** Manual map override */
+  const handleMapClick = useCallback((lat, lng) => {
+    if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current);
+    const h3 = latLngToCell(lat, lng, RESOLUTION.SENTINEL);
+    setManualPin({ lat, lng });
+    setCurrentH3(h3);
+    setCurrentRes(9);
+    setPhase('manual');
+    setAccuracy(null);
+    finalizeSentinel(lat, lng, h3);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current); };
+  }, []);
+
+  const handleSaveAddress = async (landmarks = []) => {
+    if (!sentinelData || !canSave) return;
+    setSaving(true);
     const user = await base44.auth.me();
     const googleLink = generateGoogleMapsLink(sentinelData.center.lat, sentinelData.center.lng);
     const appleLink = generateAppleMapsLink(sentinelData.center.lat, sentinelData.center.lng);
@@ -117,11 +243,11 @@ export default function GetMyID({ lang = 'en' }) {
       h3_index: sentinelData.h3_index,
       h3_index_res6: sentinelData.hierarchy.district,
       h3_index_res8: sentinelData.hierarchy.parish,
-      latitude: gpsData.latitude,
-      longitude: gpsData.longitude,
+      latitude: coords?.latitude || manualPin?.lat,
+      longitude: coords?.longitude || manualPin?.lng,
       hex_center_lat: sentinelData.center.lat,
       hex_center_lng: sentinelData.center.lng,
-      country: gpsData.country,
+      country: sentinelData.country,
       status: 'Pending',
       trust_score: 30,
       persistence_nights: 0,
@@ -130,7 +256,6 @@ export default function GetMyID({ lang = 'en' }) {
       language: lang,
     });
 
-    // Save landmarks
     for (const lm of landmarks) {
       await base44.entities.LandmarkDescription.create({
         sentinel_address_id: addressRecord.id,
@@ -156,19 +281,27 @@ export default function GetMyID({ lang = 'en' }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Resolution badge color
+  const resBadge = {
+    7: { bg: 'bg-slate-700/60', text: 'text-slate-400', label: 'Res-7 Ghost' },
+    8: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Res-8 Refining' },
+    9: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Res-9 Locked' },
+  };
+  const badge = resBadge[currentRes] || resBadge[7];
+
   return (
     <div className="min-h-screen pt-16" style={{ background: '#060B13' }}>
-      <HexBackground opacity={0.08} />
+      <HexBackground opacity={0.06} />
 
-      <div className="relative z-10 max-w-lg mx-auto px-4 py-12">
+      <div className="relative z-10 max-w-lg mx-auto px-4 py-10">
         {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-white mb-2">{tr('forge_title')}</h1>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-1">{tr('forge_title')}</h1>
           <p className="text-slate-500 text-sm">{tr('forge_sub')}</p>
         </div>
 
-        {/* Step indicator */}
-        <div className="flex items-center justify-center gap-2 mb-10">
+        {/* Step Indicator */}
+        <div className="flex items-center justify-center gap-2 mb-8">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all ${
@@ -179,101 +312,182 @@ export default function GetMyID({ lang = 'en' }) {
                 {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
               </div>
               <span className={`text-xs capitalize hidden sm:block ${i === step ? 'text-white' : 'text-slate-600'}`}>
-                {tr(`forge_step${i+1}`)}
+                {tr(`forge_step${i + 1}`)}
               </span>
-              {i < STEPS.length - 1 && (
-                <div className={`w-8 h-px ${i < step ? 'bg-emerald-500/50' : 'bg-slate-800'}`} />
-              )}
+              {i < STEPS.length - 1 && <div className={`w-8 h-px ${i < step ? 'bg-emerald-500/40' : 'bg-slate-800'}`} />}
             </div>
           ))}
         </div>
 
-        {/* STEP 0: GPS Acquisition */}
+        {/* ── STEP 0: GPS Acquisition ── */}
         {step === 0 && (
-          <div className="p-8 rounded-3xl border border-blue-900/40 text-center"
-            style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent rounded-t-3xl" />
+          <div className="rounded-3xl border border-blue-900/40 overflow-hidden"
+            style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
+            <div className="h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
 
-            <HexLockAnimation phase={gpsPhase} />
+            {/* Map — shown once GPS starts */}
+            {showMap && (
+              <div className="relative" style={{ height: 240 }}>
+                <MapContainer
+                  center={coords ? [coords.latitude, coords.longitude] : [-1.286389, 36.817223]}
+                  zoom={13}
+                  style={{ height: '100%', width: '100%', background: '#060B13' }}
+                  ref={mapRef}
+                  zoomControl={false}
+                  attributionControl={false}
+                >
+                  <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    attribution=""
+                  />
+                  <MapClickHandler onMapClick={handleMapClick} />
+                  {currentH3 && <HexPolygon h3Index={currentH3} phase={phase} />}
+                  {manualPin && (
+                    <Marker position={[manualPin.lat, manualPin.lng]} />
+                  )}
+                </MapContainer>
 
-            <div className="mt-6 mb-8">
-              {gpsPhase === 'idle' && (
-                <p className="text-slate-400 text-sm">Press the button to acquire your GPS position and generate your Sentinel ID.</p>
-              )}
-              {gpsPhase === 'acquiring' && (
-                <p className="text-blue-400 text-sm animate-pulse">{tr('forge_acquiring')}</p>
-              )}
-              {gpsPhase === 'resolving' && (
-                <p className="text-blue-400 text-sm animate-pulse">Mapping to H3 icosahedron face...</p>
-              )}
-              {gpsPhase === 'locking' && (
-                <p className="text-blue-400 text-sm animate-pulse">Snapping to Res-9 hexagon...</p>
-              )}
-              {gpsPhase === 'locked' && sentinelData && (
-                <div className="space-y-3">
-                  <p className="text-emerald-400 font-semibold">{tr('forge_locked')}</p>
-                  <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">{tr('forge_your_id')}</p>
-                    <p className="text-2xl font-bold text-white tracking-wider"
-                      style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                      {sentinelData.sentinel_id}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/40 text-center">
-                      <p className="text-xs text-slate-500 mb-0.5">Accuracy</p>
-                      <p className="text-sm font-bold text-blue-400 font-mono">±{accuracy}m</p>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/40 text-center">
-                      <p className="text-xs text-slate-500 mb-0.5">Resolution</p>
-                      <p className="text-sm font-bold text-blue-400 font-mono">R-9</p>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/40 text-center">
-                      <p className="text-xs text-slate-500 mb-0.5">Country</p>
-                      <p className="text-sm font-bold text-blue-400 font-mono">{sentinelData.country}</p>
-                    </div>
-                  </div>
-                  <div className="text-xs text-slate-600 font-mono">
-                    {formatCoordinates(gpsData.latitude, gpsData.longitude)}
-                  </div>
+                {/* Map overlay hint */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                  style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(59,130,246,0.25)' }}>
+                  <MapPin className="w-3 h-3 text-blue-400" />
+                  <span className="text-slate-400">Tap anywhere on map to manually place your location</span>
                 </div>
-              )}
-              {gpsPhase === 'error' && (
-                <div className="flex items-center gap-2 justify-center text-red-400">
-                  <AlertCircle className="w-4 h-4" />
-                  <p className="text-sm">{tr('err_gps_denied')}</p>
-                </div>
-              )}
-            </div>
 
-            {gpsPhase === 'idle' || gpsPhase === 'error' ? (
-              <button onClick={acquireGPS}
-                className="w-full py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:shadow-[0_0_35px_rgba(59,130,246,0.5)]">
-                <Navigation className="w-5 h-5" />
-                {gpsPhase === 'error' ? 'Try Again' : 'Acquire GPS Signal'}
-              </button>
-            ) : gpsPhase === 'locked' ? (
-              <button onClick={() => setStep(1)}
-                className="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)]">
-                <CheckCircle className="w-5 h-5" />
-                Continue — Add Landmarks →
-              </button>
-            ) : (
-              <div className="flex items-center justify-center gap-2 text-slate-500">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Processing satellite data...</span>
+                {/* Resolution badge */}
+                {currentRes && (
+                  <div className={`absolute top-2 right-2 px-2.5 py-1 rounded-full text-xs font-bold ${badge.bg} ${badge.text}`}
+                    style={{ backdropFilter: 'blur(8px)', border: '1px solid currentColor', opacity: 0.9 }}>
+                    {badge.label}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Offline pill */}
-            <div className="flex items-center justify-center gap-1.5 mt-4">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-emerald-500">{tr('forge_offline_safe')} — {tr('forge_offline_sub')}</span>
+            <div className="p-6">
+              {/* Hex Lock Animation */}
+              <div className="flex justify-center mb-4">
+                <HexLockAnimation phase={phase} />
+              </div>
+
+              {/* Status Bar */}
+              <div className="flex items-center gap-2 justify-center mb-4">
+                {(phase === 'searching' || phase === 'ghost' || phase === 'refining') && (
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                )}
+                {(phase === 'locked' || phase === 'manual') && (
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                )}
+                {phase === 'error' && (
+                  <div className="w-2 h-2 rounded-full bg-red-400" />
+                )}
+                <span className={`text-sm font-medium ${statusStage.color}`}>{statusStage.text}</span>
+              </div>
+
+              {/* Accuracy progress bar */}
+              {accuracy !== null && phase !== 'manual' && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs text-slate-600 mb-1">
+                    <span>GPS Accuracy</span>
+                    <span className={accuracy <= 10 ? 'text-emerald-400 font-bold' : accuracy <= 50 ? 'text-blue-400' : 'text-amber-400'}>
+                      ±{accuracy}m {accuracy <= 10 ? '✓ Save enabled' : accuracy <= 50 ? '— refining…' : '— searching…'}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.max(5, Math.min(100, (1 - Math.min(accuracy, 200) / 200) * 100))}%`,
+                        background: accuracy <= 10 ? '#10B981' : accuracy <= 50 ? '#3B82F6' : '#F59E0B',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Sentinel ID preview */}
+              {sentinelData && (
+                <div className={`p-3 rounded-2xl border mb-4 transition-all ${
+                  phase === 'locked' || phase === 'manual'
+                    ? 'border-emerald-500/30 bg-emerald-500/5'
+                    : 'border-slate-700/40 bg-slate-900/40'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-slate-600 uppercase tracking-wider mb-0.5">
+                        {phase === 'ghost' ? 'Approximate ID (Res-7)' : phase === 'refining' ? 'Draft ID (Res-8)' : 'Sentinel ID (Res-9)'}
+                      </p>
+                      <p className={`text-lg font-bold tracking-wider transition-all ${
+                        phase === 'locked' || phase === 'manual' ? 'text-white' : 'text-slate-500'
+                      }`} style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                        {sentinelData.sentinel_id}
+                      </p>
+                    </div>
+                    {coords && (
+                      <div className="text-right">
+                        <p className="text-xs text-slate-600 font-mono">{coords.latitude.toFixed(5)}</p>
+                        <p className="text-xs text-slate-600 font-mono">{coords.longitude.toFixed(5)}</p>
+                      </div>
+                    )}
+                    {manualPin && (
+                      <div className="text-right">
+                        <p className="text-xs text-slate-600 font-mono">{manualPin.lat.toFixed(5)}</p>
+                        <p className="text-xs text-slate-600 font-mono">{manualPin.lng.toFixed(5)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              {phase === 'idle' || phase === 'error' ? (
+                <button onClick={acquireGPS}
+                  className="w-full py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(59,130,246,0.35)]">
+                  <Navigation className="w-5 h-5" />
+                  {phase === 'error' ? 'Retry GPS — or tap map to place manually' : 'Acquire GPS Signal'}
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  {/* Save button — gated on accuracy ≤ 10m or manual */}
+                  <button
+                    onClick={() => setStep(1)}
+                    disabled={!canSave}
+                    className={`w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                      canSave
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_25px_rgba(16,185,129,0.35)]'
+                        : 'bg-slate-800/60 border border-slate-700/40 text-slate-600 cursor-not-allowed'
+                    }`}
+                  >
+                    {canSave ? (
+                      <><CheckCircle className="w-5 h-5" /> Continue — Add Landmarks →</>
+                    ) : (
+                      <><Crosshair className="w-5 h-5 animate-spin" style={{ animationDuration: '3s' }} />
+                        {accuracy !== null
+                          ? `Waiting for ≤10m accuracy (currently ±${accuracy}m)…`
+                          : 'Acquiring high-accuracy fix…'}
+                      </>
+                    )}
+                  </button>
+
+                  {/* Manual override hint */}
+                  {phase !== 'manual' && !canSave && (
+                    <p className="text-center text-xs text-slate-600">
+                      GPS taking too long? <span className="text-blue-500">Tap your roof on the map above</span> to place manually.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Offline safety pill */}
+              <div className="flex items-center justify-center gap-1.5 mt-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-emerald-600">{tr('forge_offline_safe')} — H3 math runs entirely on-device</span>
+              </div>
             </div>
           </div>
         )}
 
-        {/* STEP 1: Landmark Mapper */}
+        {/* ── STEP 1: Landmark Mapper ── */}
         {step === 1 && (
           <div className="p-8 rounded-3xl border border-blue-900/40"
             style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
@@ -285,50 +499,46 @@ export default function GetMyID({ lang = 'en' }) {
               </div>
             </div>
             <div className="mb-4 p-3 rounded-xl bg-slate-900/60 border border-slate-700/40 flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
               <span className="text-xs text-slate-400 font-mono">{sentinelData?.sentinel_id}</span>
+              <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
+                {phase === 'manual' ? 'Manual' : `±${accuracy}m`}
+              </span>
             </div>
             <LandmarkMapper
               sentinelAddressId={null}
               h3Index={sentinelData?.h3_index}
-              onComplete={(landmarks) => {
-                handleSaveAddress(landmarks);
-              }}
+              onComplete={(landmarks) => handleSaveAddress(landmarks)}
             />
             {saving && (
               <div className="flex items-center justify-center gap-2 mt-4 text-blue-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
                 <span className="text-sm">Saving your Sentinel Address...</span>
               </div>
             )}
           </div>
         )}
 
-        {/* STEP 2: Certification */}
+        {/* ── STEP 2: Certification ── */}
         {step === 2 && savedAddress && (
           <div className="space-y-5">
-            {/* Success card */}
             <div className="p-8 rounded-3xl border border-emerald-500/30 text-center"
               style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
               <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
                 <Shield className="w-8 h-8 text-emerald-400" />
               </div>
               <h2 className="text-xl font-bold text-white mb-1">Sentinel Address Created</h2>
-              <p className="text-slate-500 text-sm mb-6">Your digital identity is now registered. Verify it over 3 nights to build full trust.</p>
-
+              <p className="text-slate-500 text-sm mb-6">Check in for 3 consecutive nights to build your full trust score.</p>
               <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/50 mb-4">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Your Sentinel ID</p>
                 <p className="text-2xl font-bold text-white tracking-wider mb-3"
-                  style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                  {savedAddress.sentinel_id}
-                </p>
+                  style={{ fontFamily: '"JetBrains Mono", monospace' }}>{savedAddress.sentinel_id}</p>
                 <button onClick={handleCopy}
                   className="flex items-center gap-2 mx-auto text-sm text-blue-400 hover:text-blue-300 transition-colors">
                   {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   {copied ? 'Copied!' : tr('dash_copy_id')}
                 </button>
               </div>
-
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <a href={savedAddress.google_maps_link} target="_blank" rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-medium hover:bg-blue-500/20 transition-all">
@@ -339,13 +549,11 @@ export default function GetMyID({ lang = 'en' }) {
                   🍎 Apple Maps
                 </a>
               </div>
-
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-left">
                 <p className="text-xs text-amber-400 font-semibold mb-0.5">Status: Pending</p>
                 <p className="text-xs text-slate-500">Check in from this location for 3 consecutive nights to achieve Verified status.</p>
               </div>
             </div>
-
             <button onClick={() => navigate('/dashboard')}
               className="w-full py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold transition-all shadow-[0_0_25px_rgba(59,130,246,0.3)]">
               Go to My Dashboard →
