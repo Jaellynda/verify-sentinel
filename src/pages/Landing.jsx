@@ -64,7 +64,7 @@ export default function Landing({ lang = 'en' }) {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium uppercase tracking-widest mb-8">
             <Shield className="w-3.5 h-3.5" />
-            MoICT 2025-2030 Digital Addressing Solution
+            Digital Addressing Solution
           </div>
 
           {/* Headline */}
@@ -189,20 +189,52 @@ export default function Landing({ lang = 'en' }) {
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
                 <span className="text-blue-400 font-mono font-bold">H3</span>
               </div>
-              <h2 className="text-2xl font-bold text-white">How H3 Works — Without Internet</h2>
+              <div>
+                <h2 className="text-2xl font-bold text-white">How H3 Works — Without Internet</h2>
+                <p className="text-slate-500 text-sm mt-0.5">Complex Math, Simplified for Africa.</p>
+              </div>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               {[
-                { step: '01', title: 'Icosahedron Projection', desc: 'Your GPS lat/lng is converted to 3D Cartesian (x,y,z) on a unit sphere. The 20-face icosahedron pre-computed in h3-js determines which face you\'re on via dot-product math.' },
-                { step: '02', title: 'IJK Axial Snapping', desc: 'Each icosahedron face carries a flat hexagonal grid using axial (i,j,k) coordinates where i+j+k=0. Your point is gnomonic-projected to 2D, then snapped to nearest hex via cube-rounding.' },
-                { step: '03', title: 'Aperture-7 Subdivision', desc: 'Resolution 0 has 122 base cells. Each resolution divides every hex into ~7 children: area(Rn) = area(R0) / 7ⁿ. At Resolution 9: ~174m² average area — perfect for a household.' },
-                { step: '04', title: '64-bit Index Encoding', desc: 'The final ID is a 64-bit integer: bits 63–59 = mode, bits 58–56 = resolution, bits 55–0 = hierarchical path. Encoded as a 15-char hex string. All lookup tables are compiled into h3-js — zero network calls.' },
+                {
+                  step: '01',
+                  title: 'Icosahedron Projection',
+                  metaphor: '⚽ The Soccer Ball Method',
+                  desc: 'We treat the Earth like a giant soccer ball made of 20 flat triangles. We instantly figure out which "patch" of the ball you are standing on.',
+                  insight: 'No matter where you are on Earth, the math never gets "blurry" or off-center.',
+                },
+                {
+                  step: '02',
+                  title: 'IJK Axial Snapping',
+                  metaphor: '🧲 The Digital Magnet',
+                  desc: 'Think of the ground as a giant invisible honeycomb. Our system acts like a magnet that "snaps" your messy GPS signal to the center of the nearest honeycomb cell.',
+                  insight: 'This stops your location from "jumping" around. Even if your GPS is shaky, you stay in your house.',
+                },
+                {
+                  step: '03',
+                  title: 'Aperture-7 Subdivision',
+                  metaphor: '🔍 The Zoom Lens',
+                  desc: 'We start with big zones and zoom in exactly 7 times until we reach the size of a standard Ugandan plot. It\'s like a magnifying glass for your address.',
+                  insight: 'This ensures every single house in Uganda gets its own unique space that doesn\'t overlap with the neighbor.',
+                },
+                {
+                  step: '04',
+                  title: '64-bit Index Encoding',
+                  metaphor: '🗝️ The Master Key',
+                  desc: 'We take all that geography and turn it into a short, 15-character "Master Key." This key is computed entirely inside your phone\'s memory.',
+                  insight: 'This is the "Offline" magic. Your phone doesn\'t need to ask a server for your ID — it calculates it instantly without using a single kilobyte of data.',
+                },
               ].map(item => (
                 <div key={item.step} className="flex gap-4">
                   <div className="text-3xl font-bold text-blue-500/30 font-mono flex-shrink-0">{item.step}</div>
                   <div>
+                    <p className="text-blue-400 text-xs font-semibold uppercase tracking-wider mb-0.5">{item.metaphor}</p>
                     <h4 className="text-white font-semibold mb-1">{item.title}</h4>
-                    <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+                    <p className="text-slate-400 text-sm leading-relaxed mb-2">{item.desc}</p>
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-emerald-500 flex-shrink-0 mt-0.5">→</span>
+                      <p className="text-slate-600 text-xs leading-relaxed italic">{item.insight}</p>
+                    </div>
                   </div>
                 </div>
               ))}
