@@ -57,29 +57,48 @@
       "type": "string",
       "title": "Region/District"
     },
+    "residency_type": {
+      "type": "string",
+      "title": "Residency Type",
+      "enum": [
+        "Owner",
+        "Tenant",
+        "Guest"
+      ],
+      "default": "Owner"
+    },
     "status": {
       "type": "string",
       "title": "Verification Status",
       "enum": [
-        "Pending",
-        "Partial",
-        "Verified"
+        "Visitor",
+        "Resident",
+        "Sentinel Permanent"
       ],
-      "default": "Pending"
+      "default": "Visitor"
     },
     "trust_score": {
       "type": "number",
       "title": "Trust Score (0-100)",
-      "default": 0
+      "default": 30
     },
     "persistence_nights": {
       "type": "number",
-      "title": "Consecutive Nights Detected",
+      "title": "Total Check-ins",
+      "default": 0
+    },
+    "weekly_pings": {
+      "type": "number",
+      "title": "Weekly Pings (for Sentinel Permanent)",
       "default": 0
     },
     "last_checkin": {
       "type": "string",
-      "title": "Last Check-in Timestamp"
+      "title": "Last Check-in Timestamp (ISO)"
+    },
+    "last_weekly_ping": {
+      "type": "string",
+      "title": "Last Weekly Ping Timestamp (ISO)"
     },
     "vouches_count": {
       "type": "number",

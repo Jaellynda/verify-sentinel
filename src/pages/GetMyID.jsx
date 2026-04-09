@@ -128,6 +128,7 @@ export default function GetMyID({ lang = 'en' }) {
   const mapRef = useRef(null);
 
   const [step, setStep] = useState(0);
+  const [residencyType, setResidencyType] = useState('Owner');
   const [phase, setPhase] = useState('idle');
   const [currentH3, setCurrentH3] = useState(null);
   const [currentRes, setCurrentRes] = useState(null);
@@ -239,6 +240,7 @@ export default function GetMyID({ lang = 'en' }) {
     const addressRecord = await base44.entities.SentinelAddress.create({
       user_id: user.id,
       user_email: user.email,
+      residency_type: residencyType,
       sentinel_id: sentinelData.sentinel_id,
       h3_index: sentinelData.h3_index,
       h3_index_res6: sentinelData.hierarchy.district,
@@ -474,6 +476,30 @@ export default function GetMyID({ lang = 'en' }) {
                     <p className="text-center text-xs text-slate-600">
                       GPS taking too long? <span className="text-blue-500">Tap your roof on the map above</span> to place manually.
                     </p>
+                  )}
+                </div>
+              )}
+
+              {/* Residency Type selector — shown when GPS is acquired */}
+              {phase !== 'idle' && phase !== 'error' && (
+                <div className="mt-4 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
+                  <label className="text-xs text-slate-500 uppercase tracking-wider mb-2 block">Residency Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[{v:'Owner',icon:'🏗️',note:'Full tiers'},{v:'Tenant',icon:'🔑',note:'Full tiers'},{v:'Guest',icon:'🧳',note:'Max: Resident'}].map(({v,icon,note}) => (
+                      <button key={v} onClick={() => setResidencyType(v)}
+                        className={`flex flex-col items-center gap-0.5 py-2 rounded-xl border text-xs font-medium transition-all ${
+                          residencyType === v
+                            ? v === 'Guest' ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-blue-500/20 border-blue-500/40 text-blue-400'
+                            : 'bg-slate-800/60 border-slate-700/40 text-slate-500 hover:border-slate-600'
+                        }`}>
+                        <span className="text-base">{icon}</span>
+                        <span>{v}</span>
+                        <span className="text-slate-600 text-xs">{note}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {residencyType === 'Guest' && (
+                    <p className="text-xs text-amber-500/70 mt-2">⚠ Guest addresses are capped at Resident tier and cannot reach Sentinel Permanent.</p>
                   )}
                 </div>
               )}

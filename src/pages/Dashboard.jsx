@@ -1,15 +1,81 @@
-import { useState, useEffect } from 'react';
-import { Shield, MapPin, Copy, CheckCircle, Clock, Users, ExternalLink, RefreshCw, Navigation } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Shield, MapPin, Copy, CheckCircle, Clock, ExternalLink, RefreshCw, Navigation, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { isInsideHex, calculateTrustScore, formatCoordinates } from '../lib/h3core';
 import { translate } from '../lib/i18n';
+import {
+  queueCheckin, getPendingCheckins, syncOfflineQueue,
+  hasPendingCheckins, getTimeLockRemaining, formatTimeRemaining
+} from '../lib/offlineQueue';
 import TrustArc from '../components/TrustArc';
 import HexBackground from '../components/HexBackground';
 
-const STATUS_CONFIG = {
-  Pending: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', label: 'Pending' },
-  Partial: { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', label: 'Partial' },
-  Verified: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', label: 'Verified' },
+/**
+ * RESIDENCY TIER SYSTEM
+ * ─────────────────────────────────────────────────────────────
+ * Visitor         — Instant (0 check-ins). Anyone can be this.
+ * Resident        — 3 check-ins over 3+ days.
+ * Sentinel Permanent — 4 weekly pings. BLOCKED for "Guest" type.
+ * ─────────────────────────────────────────────────────────────
+ * TIME-LOCK: 20 hours between check-ins (enforced client + DB timestamp).
+ * OFFLINE: If offline at check-in, GPS+timestamp cached to localStorage
+ * and synced automatically when connectivity is restored.
+ */
+
+const TIERS = {
+  'Visitor': {
+    color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30',
+    icon: '👤', description: 'Instant — location registered',
+    nextTier: 'Resident', requirement: '3 check-ins over 3 days',
+  },
+  'Resident': {
+    color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30',
+    icon: '🏠', description: 'Verified resident',
+    nextTier: 'Sentinel Permanent', requirement: '4 weekly pings',
+  },
+  'Sentinel Permanent': {
+    color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
+    icon: '🛡️', description: 'Maximum trust — permanent resident',
+    nextTier: null, requirement: null,
+  },
+};
+
+function computeTier(nights, weeklyPings, residencyType) {
+  if (weeklyPings >= 4 && residencyType !== 'Guest') return 'Sentinel Permanent';
+  if (nights >= 3) return 'Resident';
+  return 'Visitor';
+}
+
+function TimeLockCountdown({ lastCheckin }) {
+  const [remaining, setRemaining] = useState(getTimeLockRemaining(lastCheckin));
+
+  useEffect(() => {
+    if (remaining <= 0) return;
+    const interval = setInterval(() => {
+      const r = getTimeLockRemaining(lastCheckin);
+      setRemaining(r);
+      if (r <= 0) clearInterval(interval);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastCheckin]);
+
+  if (remaining <= 0) return null;
+  return (
+    <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+      <Clock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+      <div>
+        <p className="text-xs text-amber-400 font-semibold">Check-in Time Lock Active</p>
+        <p className="text-xs text-slate-500">{formatTimeRemaining(remaining)} until next check-in</p>
+      </div>
+    </div>
+  );
+}
+
+const LANDMARK_ICONS = {
+  'Kiosk': '🏪', 'Petrol Station': '⛽', 'School': '🏫',
+  'Church/Mosque': '🕌', 'Borehole': '💧', 'Market': '🛒',
+  'Clinic/Hospital': '🏥', 'Bar/Restaurant': '🍺',
+  'Road Junction': '🛤️', 'Tree/Natural': '🌳', 'Other': '📍',
 };
 
 export default function Dashboard({ lang = 'en' }) {
@@ -20,9 +86,34 @@ export default function Dashboard({ lang = 'en' }) {
   const [copied, setCopied] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingSync, setPendingSync] = useState(hasPendingCheckins());
+  const [syncMessage, setSyncMessage] = useState('');
 
   useEffect(() => {
     loadData();
+
+    const goOnline = async () => {
+      setIsOnline(true);
+      if (hasPendingCheckins()) {
+        setSyncMessage('Syncing offline check-ins...');
+        const count = await syncOfflineQueue(processQueuedCheckin);
+        if (count > 0) {
+          setSyncMessage(`✓ ${count} offline check-in(s) synced`);
+          setPendingSync(false);
+          await loadData();
+          setTimeout(() => setSyncMessage(''), 4000);
+        }
+      }
+    };
+    const goOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
   }, []);
 
   const loadData = async () => {
@@ -38,37 +129,97 @@ export default function Dashboard({ lang = 'en' }) {
     setLoading(false);
   };
 
+  /** Process a queued offline check-in when back online */
+  const processQueuedCheckin = useCallback(async ({ addressId, lat, lng, timestamp }) => {
+    const currentAddr = await base44.entities.SentinelAddress.filter({ id: addressId });
+    if (!currentAddr.length) return;
+    const addr = currentAddr[0];
+    await applyCheckin(addr, lat, lng, new Date(timestamp));
+  }, []);
+
+  /** Core check-in logic — shared by live and offline-synced check-ins */
+  const applyCheckin = async (addr, lat, lng, checkinTime = new Date()) => {
+    const inside = isInsideHex(lat, lng, addr.h3_index);
+    if (!inside) throw new Error('Outside hexagon');
+
+    const newNights = (addr.persistence_nights || 0) + 1;
+    // Weekly ping: only count if last_weekly_ping was > 7 days ago (or first ping)
+    let newWeeklyPings = addr.weekly_pings || 0;
+    const lastWeekly = addr.last_weekly_ping ? new Date(addr.last_weekly_ping) : null;
+    const daysSinceWeekly = lastWeekly ? (Date.now() - lastWeekly.getTime()) / (1000 * 60 * 60 * 24) : 999;
+    if (daysSinceWeekly >= 7) newWeeklyPings += 1;
+
+    const newTier = computeTier(newNights, newWeeklyPings, addr.residency_type);
+    const newScore = calculateTrustScore(Math.min(newNights, 3), addr.vouches_count || 0);
+
+    const updateData = {
+      persistence_nights: newNights,
+      weekly_pings: newWeeklyPings,
+      trust_score: newScore,
+      status: newTier,
+      last_checkin: checkinTime.toISOString(),
+    };
+    if (daysSinceWeekly >= 7) updateData.last_weekly_ping = checkinTime.toISOString();
+
+    await base44.entities.SentinelAddress.update(addr.id, updateData);
+  };
+
   const handleCheckin = async () => {
-    if (!address || !navigator.geolocation) return;
+    if (!address) return;
+
+    // Time-lock check
+    const remaining = getTimeLockRemaining(address.last_checkin);
+    if (remaining > 0) {
+      setCheckinMessage(`⏱ ${formatTimeRemaining(remaining)} until next check-in is allowed.`);
+      return;
+    }
+
+    // Sentinel Permanent block for Guests
+    if (address.residency_type === 'Guest' && address.status === 'Resident') {
+      setCheckinMessage('ℹ Guest residency cannot advance to Sentinel Permanent.');
+      return;
+    }
+
     setCheckingIn(true);
     setCheckinMessage('');
+
+    if (!navigator.onLine) {
+      // OFFLINE: Queue locally
+      queueCheckin({
+        addressId: address.id,
+        lat: address.latitude,
+        lng: address.longitude,
+        timestamp: new Date().toISOString(),
+        residencyType: address.residency_type,
+      });
+      setPendingSync(true);
+      setCheckinMessage('📶 Offline — check-in saved locally. Will sync when connected.');
+      // Optimistic UI update: update last_checkin locally to trigger time-lock
+      setAddress(prev => ({ ...prev, last_checkin: new Date().toISOString() }));
+      setCheckingIn(false);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setCheckinMessage('GPS unavailable.');
+      setCheckingIn(false);
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        const inside = isInsideHex(latitude, longitude, address.h3_index);
-
-        if (inside) {
-          const newNights = Math.min((address.persistence_nights || 0) + 1, 3);
-          const newScore = calculateTrustScore(newNights, address.vouches_count || 0);
-          const newStatus = newNights >= 3 ? 'Verified' : newNights >= 1 ? 'Partial' : 'Pending';
-
-          await base44.entities.SentinelAddress.update(address.id, {
-            persistence_nights: newNights,
-            trust_score: newScore,
-            status: newStatus,
-            last_checkin: new Date().toISOString(),
-          });
-
-          setCheckinMessage(`✓ Night ${newNights}/3 confirmed. Trust Score: ${newScore}`);
+        try {
+          await applyCheckin(address, latitude, longitude);
           await loadData();
-        } else {
-          setCheckinMessage('⚠ You are not inside your registered hexagon. Move closer and try again.');
+          setCheckinMessage(`✓ Check-in confirmed. Keep returning to build your tier.`);
+        } catch {
+          setCheckinMessage('⚠ You are outside your registered hexagon. Move closer and try again.');
         }
         setCheckingIn(false);
       },
       () => {
-        setCheckinMessage('GPS error. Please enable location access.');
+        setCheckinMessage('GPS error. Enable location access and try again.');
         setCheckingIn(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -80,13 +231,6 @@ export default function Dashboard({ lang = 'en' }) {
     navigator.clipboard.writeText(address.sentinel_id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const LANDMARK_ICONS = {
-    'Kiosk': '🏪', 'Petrol Station': '⛽', 'School': '🏫',
-    'Church/Mosque': '🕌', 'Borehole': '💧', 'Market': '🛒',
-    'Clinic/Hospital': '🏥', 'Bar/Restaurant': '🍺',
-    'Road Junction': '🛤️', 'Tree/Natural': '🌳', 'Other': '📍',
   };
 
   if (loading) {
@@ -119,31 +263,97 @@ export default function Dashboard({ lang = 'en' }) {
     );
   }
 
-  const statusCfg = STATUS_CONFIG[address.status] || STATUS_CONFIG.Pending;
+  const tier = address.status || 'Visitor';
+  const tierCfg = TIERS[tier] || TIERS['Visitor'];
   const nights = address.persistence_nights || 0;
+  const weeklyPings = address.weekly_pings || 0;
+  const timeLockRemaining = getTimeLockRemaining(address.last_checkin);
+  const isTimeLocked = timeLockRemaining > 0;
+  const isMaxTier = tier === 'Sentinel Permanent';
+  const isGuestBlocked = address.residency_type === 'Guest' && tier === 'Resident';
 
   return (
     <div className="min-h-screen pt-16" style={{ background: '#060B13' }}>
       <HexBackground opacity={0.07} />
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-10 space-y-5">
+
+        {/* Offline / Sync Banner */}
+        {!isOnline && (
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <WifiOff className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <div>
+              <p className="text-xs text-amber-400 font-semibold">Offline Mode Active</p>
+              <p className="text-xs text-slate-500">Check-ins will be cached locally and synced when you reconnect.</p>
+            </div>
+          </div>
+        )}
+        {syncMessage && (
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <Wifi className="w-4 h-4 text-emerald-400" />
+            <p className="text-xs text-emerald-400 font-medium">{syncMessage}</p>
+          </div>
+        )}
+        {pendingSync && isOnline && !syncMessage && (
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <RefreshCw className="w-4 h-4 text-blue-400 animate-spin" />
+            <p className="text-xs text-blue-400">Syncing offline check-ins...</p>
+          </div>
+        )}
+
         {/* Header Card */}
         <div className="p-6 rounded-3xl border border-blue-900/40"
           style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent rounded-t-3xl" />
+          <div className="h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent mb-5 -mx-6 px-6" />
 
           <div className="flex items-start justify-between mb-5">
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">{tr('dash_title')}</p>
-              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.bg} ${statusCfg.border} ${statusCfg.color} border`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${address.status === 'Verified' ? 'bg-emerald-400' : 'bg-current'} ${address.status !== 'Verified' ? 'animate-pulse' : ''}`} />
-                {address.status}
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">{tr('dash_title')}</p>
+              {/* Tier Badge */}
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold border ${tierCfg.bg} ${tierCfg.border} ${tierCfg.color}`}>
+                <span>{tierCfg.icon}</span>
+                <span>{tier}</span>
+                {!isMaxTier && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
               </div>
+              {address.residency_type && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-slate-800/60 border border-slate-700/40 text-slate-500 ml-2">
+                  {address.residency_type === 'Owner' ? '🏗️' : address.residency_type === 'Tenant' ? '🔑' : '🧳'}
+                  {address.residency_type}
+                </div>
+              )}
             </div>
             <button onClick={loadData} className="text-slate-600 hover:text-slate-400 transition-colors">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Tier Progress Path */}
+          <div className="flex items-center gap-2 mb-5 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
+            {Object.entries(TIERS).map(([name, cfg], i, arr) => (
+              <div key={name} className="flex items-center gap-2 flex-1">
+                <div className={`flex flex-col items-center gap-1 flex-1 ${
+                  name === tier ? cfg.color : (Object.keys(TIERS).indexOf(name) < Object.keys(TIERS).indexOf(tier) ? 'text-emerald-500' : 'text-slate-700')
+                }`}>
+                  <span className="text-base">{cfg.icon}</span>
+                  <span className="text-xs font-medium text-center leading-tight">{name}</span>
+                  {name === tier && <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                </div>
+                {i < arr.length - 1 && (
+                  <div className={`h-px flex-1 ${Object.keys(TIERS).indexOf(tier) > i ? 'bg-emerald-500/40' : 'bg-slate-700/50'}`} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Next requirement */}
+          {!isMaxTier && (
+            <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-700/20 mb-4">
+              <p className="text-xs text-slate-600">
+                <span className="text-slate-400">Next tier:</span> {tierCfg.nextTier} — requires {tierCfg.requirement}
+                {isGuestBlocked && <span className="text-amber-500"> (Guest type cannot reach Sentinel Permanent)</span>}
+              </p>
+            </div>
+          )}
 
           {/* Sentinel ID */}
           <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/40 mb-4">
@@ -168,40 +378,75 @@ export default function Dashboard({ lang = 'en' }) {
               <p className="text-xs text-slate-600 mt-0.5">{tr('dash_trust')}</p>
             </div>
             <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
-              <p className="text-xl font-bold text-emerald-400 font-mono">{nights}/3</p>
-              <p className="text-xs text-slate-600 mt-0.5">{tr('dash_nights')}</p>
+              <p className="text-xl font-bold text-emerald-400 font-mono">{nights}</p>
+              <p className="text-xs text-slate-600 mt-0.5">Check-ins</p>
             </div>
             <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
-              <p className="text-xl font-bold text-amber-400 font-mono">{address.vouches_count || 0}</p>
-              <p className="text-xs text-slate-600 mt-0.5">{tr('dash_vouches')}</p>
+              <p className="text-xl font-bold text-amber-400 font-mono">{weeklyPings}/4</p>
+              <p className="text-xs text-slate-600 mt-0.5">Weekly Pings</p>
             </div>
           </div>
         </div>
 
-        {/* Trust Arc + Persistence */}
+        {/* Trust Arc + Check-in */}
         <div className="p-6 rounded-3xl border border-blue-900/40"
           style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
           <h3 className="text-sm font-semibold text-white mb-1">{tr('dash_persistence')}</h3>
-          <p className="text-xs text-slate-500 mb-6">{tr('dash_persistence_sub')}</p>
+          <p className="text-xs text-slate-500 mb-5">{tr('dash_persistence_sub')}</p>
 
-          <TrustArc score={address.trust_score || 30} nights={nights} maxNights={3} />
+          <TrustArc score={address.trust_score || 30} nights={Math.min(nights, 3)} maxNights={3} />
 
-          <button onClick={handleCheckin} disabled={checkingIn || nights >= 3}
-            className="w-full mt-6 py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50
-              bg-blue-500 hover:bg-blue-400 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+          {/* Weekly ping nodes */}
+          <div className="mt-4 mb-5">
+            <p className="text-xs text-slate-600 uppercase tracking-wider mb-2">Weekly Pings (Sentinel Permanent)</p>
+            <div className="flex gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                  i < weeklyPings
+                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                    : 'bg-slate-800'
+                }`} />
+              ))}
+            </div>
+            {isGuestBlocked && (
+              <p className="text-xs text-amber-500/70 mt-1.5">🧳 Guest accounts cannot reach Sentinel Permanent</p>
+            )}
+          </div>
+
+          {/* Time lock countdown */}
+          {isTimeLocked && <div className="mb-4"><TimeLockCountdown lastCheckin={address.last_checkin} /></div>}
+
+          <button
+            onClick={handleCheckin}
+            disabled={checkingIn || isMaxTier || (isTimeLocked && !checkinMessage)}
+            className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+              isMaxTier
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
+                : isTimeLocked
+                ? 'bg-slate-800/60 border border-slate-700/40 text-slate-600 cursor-not-allowed'
+                : !isOnline
+                ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
+                : 'bg-blue-500 hover:bg-blue-400 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+            }`}
+          >
             {checkingIn ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying Location...</>
-            ) : nights >= 3 ? (
-              <><CheckCircle className="w-4 h-4" /> Fully Verified — 3/3 Nights Complete</>
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
+            ) : isMaxTier ? (
+              <><CheckCircle className="w-4 h-4" /> Sentinel Permanent — Maximum Trust</>
+            ) : isTimeLocked ? (
+              <><Clock className="w-4 h-4" /> Time-Locked</>
+            ) : !isOnline ? (
+              <><WifiOff className="w-4 h-4" /> Check-in Offline (will sync)</>
             ) : (
-              <><Navigation className="w-4 h-4" /> {tr('dash_checkin')} (Night {nights + 1}/3)</>
+              <><Navigation className="w-4 h-4" /> {tr('dash_checkin')}</>
             )}
           </button>
 
           {checkinMessage && (
             <div className={`mt-3 p-3 rounded-xl text-xs text-center ${
               checkinMessage.startsWith('✓') ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-              : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+              : checkinMessage.startsWith('📶') ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+              : 'bg-slate-800/60 border border-slate-700/30 text-slate-400'
             }`}>
               {checkinMessage}
             </div>
@@ -214,7 +459,7 @@ export default function Dashboard({ lang = 'en' }) {
             style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
             <h3 className="text-sm font-semibold text-white mb-4">{tr('dash_anchors')}</h3>
             <div className="space-y-3">
-              {landmarks.map((lm, i) => (
+              {landmarks.map((lm) => (
                 <div key={lm.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
                   <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-lg flex-shrink-0">
                     {LANDMARK_ICONS[lm.landmark_type] || '📍'}
@@ -227,7 +472,7 @@ export default function Dashboard({ lang = 'en' }) {
                       {lm.is_primary && <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">Primary</span>}
                     </div>
                     <p className="text-sm text-slate-300 truncate">{lm.ai_normalized || lm.description_text}</p>
-                    {lm.distance_meters && <p className="text-xs text-slate-600 mt-0.5">~{lm.distance_meters}m away</p>}
+                    {lm.distance_meters && <p className="text-xs text-slate-600 mt-0.5">~{lm.distance_meters}m</p>}
                   </div>
                 </div>
               ))}
@@ -250,8 +495,7 @@ export default function Dashboard({ lang = 'en' }) {
             </a>
           </div>
           <div className="mt-3 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
-            <p className="text-xs text-slate-500">Hex Center:</p>
-            <p className="text-xs font-mono text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 font-mono">
               {formatCoordinates(address.hex_center_lat, address.hex_center_lng)}
             </p>
           </div>
