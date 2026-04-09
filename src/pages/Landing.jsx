@@ -56,13 +56,13 @@ export default function Landing({ lang = 'en' }) {
 
         {/* Offline safety pill */}
         <div className="absolute top-24 right-4 md:right-8 flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-sm animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span className="text-xs text-emerald-400 font-medium">{tr('forge_offline_safe')}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+          <span className="text-xs text-green-400 font-medium">{tr('forge_offline_safe')}</span>
         </div>
 
         <div className="relative z-10 text-center max-w-4xl mx-auto">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium uppercase tracking-widest mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-xs font-medium uppercase tracking-widest mb-8">
             <Shield className="w-3.5 h-3.5" />
             Digital Addressing Solution
           </div>
@@ -82,13 +82,13 @@ export default function Landing({ lang = 'en' }) {
           {/* Dual CTA */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link to="/get-id"
-              className="group flex items-center gap-3 px-8 py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-base transition-all duration-300 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)] w-full sm:w-auto justify-center">
+              className="group flex items-center gap-3 px-8 py-4 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold text-base transition-all duration-300 shadow-[0_0_30px_rgba(74,222,128,0.3)] hover:shadow-[0_0_40px_rgba(74,222,128,0.5)] w-full sm:w-auto justify-center">
               <Shield className="w-5 h-5" />
               {tr('cta_individual')}
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link to="/verify"
-              className="group flex items-center gap-3 px-8 py-4 rounded-2xl border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 font-semibold text-base transition-all duration-300 w-full sm:w-auto justify-center">
+              className="group flex items-center gap-3 px-8 py-4 rounded-2xl border border-green-500/40 text-green-400 hover:bg-green-500/10 font-semibold text-base transition-all duration-300 w-full sm:w-auto justify-center">
               <Zap className="w-5 h-5" />
               {tr('cta_business')}
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -99,11 +99,11 @@ export default function Landing({ lang = 'en' }) {
 
       {/* Stats Bar */}
       <section className="relative z-10 px-4 py-8 border-y border-blue-900/30"
-        style={{ background: 'rgba(13,31,60,0.7)', backdropFilter: 'blur(20px)' }}>
+        style={{ background: 'rgba(6,6,6,0.85)', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map((stat, i) => (
             <div key={i} className="text-center">
-              <div className="text-2xl md:text-3xl font-bold text-white mb-1"
+              <div className="text-2xl md:text-3xl font-bold text-green-400 mb-1"
                 style={{ fontFamily: '"JetBrains Mono", monospace' }}>{stat.value}</div>
               <div className="text-xs text-slate-500 uppercase tracking-wider">{stat.label}</div>
             </div>
@@ -120,39 +120,39 @@ export default function Landing({ lang = 'en' }) {
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             {/* Individual Card */}
-            <div className="group relative p-8 rounded-3xl border border-blue-900/40 overflow-hidden transition-all duration-300 hover:border-blue-500/50"
+            <div className="group relative p-8 rounded-3xl border border-green-900/30 overflow-hidden transition-all duration-300 hover:border-green-500/40"
               style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/60 to-transparent" />
-              <div className="w-14 h-14 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center mb-6 text-2xl">👤</div>
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
+              <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-6 text-2xl">👤</div>
               <h3 className="text-xl font-bold text-white mb-2">{tr('persona_individual')}</h3>
               <p className="text-slate-400 mb-6">{tr('persona_individual_sub')}</p>
               <ul className="space-y-2 mb-8">
                 {['Works 100% offline', 'Shareable with banks & couriers', 'Builds trust over 3 nights', 'Multilingual support'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />{f}
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />{f}
                   </li>
                 ))}
               </ul>
-              <Link to="/get-id" className="flex items-center gap-2 text-blue-400 font-semibold text-sm group-hover:gap-3 transition-all">
+              <Link to="/get-id" className="flex items-center gap-2 text-green-400 font-semibold text-sm group-hover:gap-3 transition-all">
                 Get My Sentinel ID <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
             {/* Business Card */}
-            <div className="group relative p-8 rounded-3xl border border-emerald-900/40 overflow-hidden transition-all duration-300 hover:border-emerald-500/50"
+            <div className="group relative p-8 rounded-3xl border border-green-900/30 overflow-hidden transition-all duration-300 hover:border-green-500/40"
               style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-6 text-2xl">🏢</div>
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
+              <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-6 text-2xl">🏢</div>
               <h3 className="text-xl font-bold text-white mb-2">{tr('persona_business')}</h3>
               <p className="text-slate-400 mb-6">{tr('persona_business_sub')}</p>
               <ul className="space-y-2 mb-8">
                 {['Instant verification API', 'Trust score integration', 'Last-mile delivery maps', 'Bank KYC ready'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{f}
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />{f}
                   </li>
                 ))}
               </ul>
-              <Link to="/verify" className="flex items-center gap-2 text-emerald-400 font-semibold text-sm group-hover:gap-3 transition-all">
+              <Link to="/verify" className="flex items-center gap-2 text-green-400 font-semibold text-sm group-hover:gap-3 transition-all">
                 Verify a Client <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -186,8 +186,8 @@ export default function Landing({ lang = 'en' }) {
           <div className="p-8 rounded-3xl border border-blue-500/20"
             style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <span className="text-blue-400 font-mono font-bold">H3</span>
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                <span className="text-green-400 font-mono font-bold">H3</span>
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white">How H3 Works — Without Internet</h2>
@@ -228,7 +228,7 @@ export default function Landing({ lang = 'en' }) {
                 <div key={item.step} className="flex gap-4">
                   <div className="text-3xl font-bold text-blue-500/30 font-mono flex-shrink-0">{item.step}</div>
                   <div>
-                    <p className="text-blue-400 text-xs font-semibold uppercase tracking-wider mb-0.5">{item.metaphor}</p>
+                    <p className="text-green-400 text-xs font-semibold uppercase tracking-wider mb-0.5">{item.metaphor}</p>
                     <h4 className="text-white font-semibold mb-1">{item.title}</h4>
                     <p className="text-slate-400 text-sm leading-relaxed mb-2">{item.desc}</p>
                     <div className="flex items-start gap-1.5">
@@ -249,19 +249,20 @@ export default function Landing({ lang = 'en' }) {
           <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-3xl border border-blue-900/30"
             style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
             <div className="relative flex-shrink-0">
-              <div className="w-24 h-24 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-4xl">
-                👩🏿‍💻
+              <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-green-500/40 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
+                <img src="https://media.base44.com/images/public/69d79295e7d49407d166ab9f/d02bc6e57_Screenshot2026-04-08at105618PM.png"
+                  alt="Jael T Mugisha" className="w-full h-full object-cover object-top" />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-blue-500 border-2 border-slate-900 flex items-center justify-center">
-                <Star className="w-3 h-3 text-white" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-slate-900 flex items-center justify-center">
+                <Star className="w-3 h-3 text-black" />
               </div>
             </div>
             <div>
-              <p className="text-blue-400 text-xs uppercase tracking-widest mb-1 font-medium">Founder & CEO</p>
-              <h3 className="text-2xl font-bold text-white mb-1">Jael</h3>
+              <p className="text-green-400 text-xs uppercase tracking-widest mb-1 font-medium">Founder & CEO</p>
+              <h3 className="text-2xl font-bold text-white mb-1">Jael T Mugisha</h3>
               <p className="text-slate-400 text-sm mb-3">M.Sc. Data Analytics Engineering — Production AI Engineering</p>
               <p className="text-slate-500 text-sm leading-relaxed">
-                "The Landmark Paradox is solvable. Every household in East Africa sits inside a mathematically unique H3 hexagon — we just needed to make that visible, persistent, and trustworthy."
+                "The Landmark Paradox is solvable. Every household in East Africa sits inside a mathematically unique H3 hexagon. We just needed to make that visible, persistent, and trustworthy."
               </p>
               <div className="flex gap-3 mt-4">
                 <span className="px-3 py-1 rounded-lg text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400">Geospatial Engineering</span>
@@ -275,11 +276,11 @@ export default function Landing({ lang = 'en' }) {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-blue-900/30 px-4 py-10"
-        style={{ background: 'rgba(6,11,19,0.95)' }}>
+        style={{ background: 'rgba(4,4,4,0.97)' }}>
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8">
             <div className="flex items-center gap-2">
-              <Shield className="w-6 h-6 text-blue-400" />
+              <Shield className="w-6 h-6 text-green-400" />
               <span className="font-bold text-white">VerifySentinel</span>
             </div>
             <div className="flex flex-wrap gap-4">
@@ -295,11 +296,10 @@ export default function Landing({ lang = 'en' }) {
               { label: 'Current Hex Resolution', value: '9' },
               { label: 'Global Base Cells', value: '122' },
               { label: 'EA Regional Satellites', value: 'Active ●' },
-              { label: 'Aperture Factor', value: '7 (H3 Standard)' },
             ].map(item => (
               <div key={item.label}>
                 <div className="text-xs text-slate-600 mb-0.5">{item.label}</div>
-                <div className="text-sm font-mono text-blue-400">{item.value}</div>
+                <div className="text-sm font-mono text-green-400">{item.value}</div>
               </div>
             ))}
           </div>
