@@ -32,7 +32,7 @@ export default function Landing({ lang = 'en' }) {
     { icon: '⬡', title: 'H3 Hexagonal Precision', desc: 'Res-9 hexagons (~174m²) provide stable IDs that don\'t change when you move 10 steps.' },
     { icon: '📡', title: '100% Offline Generation', desc: 'Sentinel ID computed on-device from satellite GPS using compiled icosahedron geometry. Zero data needed.' },
     { icon: '🔒', title: 'Anti-Fraud Persistence', desc: '3-consecutive-night detection algorithm prevents fake address claims. Trust score builds over time.' },
-    { icon: '🌍', title: 'East African First', desc: 'Built for Uganda, Kenya, Rwanda, DRC. Supports English, Luganda, Swahili, and French.' },
+    { icon: '🌍', title: 'East African First', desc: 'Built for Uganda, Kenya, Rwanda, DRC — with open architecture for all East & Central African nations. Supports English, Luganda, Swahili, and French.' },
     { icon: '🚚', title: 'Last-Mile Delivery', desc: 'Deep links to Google Maps & Apple Maps from any Sentinel ID. Delivery drivers arrive first time.' },
     { icon: '🏦', title: 'Bank-Grade Verification', desc: 'Trust Score integrates neighbor vouching + persistence data for credit-ready location identity.' },
   ];
@@ -115,7 +115,7 @@ export default function Landing({ lang = 'en' }) {
       <section id="personas" data-animate className="relative z-10 px-4 py-20">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-green-400 mb-3">Who Is This For?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Who Is This For?</h2>
             <p className="text-slate-500">Two use cases, one immutable infrastructure.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
@@ -172,7 +172,7 @@ export default function Landing({ lang = 'en' }) {
               <div key={i} className="p-6 rounded-2xl border border-zinc-800 hover:border-green-500/30 transition-all group"
                 style={{ background: '#18181b' }}>
                 <div className="text-3xl mb-4">{f.icon}</div>
-                <h4 className="text-green-400 font-semibold mb-2 transition-colors">{f.title}</h4>
+                <h4 className="text-white font-semibold mb-2 group-hover:text-green-400 transition-colors">{f.title}</h4>
                 <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -190,7 +190,7 @@ export default function Landing({ lang = 'en' }) {
                 <span className="text-green-400 font-mono font-bold">H3</span>
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-green-400">How H3 Works — Without Internet</h2>
+                <h2 className="text-2xl font-bold text-white">How H3 Works — Without Internet</h2>
                 <p className="text-slate-500 text-sm mt-0.5">Complex Math, Simplified for Africa.</p>
               </div>
             </div>
