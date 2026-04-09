@@ -12,18 +12,6 @@ import TrustScoreGraph from '../components/TrustScoreGraph';
 import VouchingSystem from '../components/VouchingSystem';
 import HexBackground from '../components/HexBackground';
 
-/**
- * RESIDENCY TIER SYSTEM
- * ─────────────────────────────────────────────────────────────
- * Visitor         — Instant (0 check-ins). Anyone can be this.
- * Resident        — 3 check-ins over 3+ days.
- * Sentinel Permanent — 4 weekly pings. BLOCKED for "Guest" type.
- * ─────────────────────────────────────────────────────────────
- * TIME-LOCK: 20 hours between check-ins (enforced client + DB timestamp).
- * OFFLINE: If offline at check-in, GPS+timestamp cached to localStorage
- * and synced automatically when connectivity is restored.
- */
-
 const TIERS = {
   'Visitor': {
     color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30',
@@ -131,7 +119,6 @@ export default function Dashboard({ lang = 'en' }) {
     setLoading(false);
   };
 
-  /** Process a queued offline check-in when back online */
   const processQueuedCheckin = useCallback(async ({ addressId, lat, lng, timestamp }) => {
     const currentAddr = await base44.entities.SentinelAddress.filter({ id: addressId });
     if (!currentAddr.length) return;
@@ -139,13 +126,11 @@ export default function Dashboard({ lang = 'en' }) {
     await applyCheckin(addr, lat, lng, new Date(timestamp));
   }, []);
 
-  /** Core check-in logic — shared by live and offline-synced check-ins */
   const applyCheckin = async (addr, lat, lng, checkinTime = new Date()) => {
     const inside = isInsideHex(lat, lng, addr.h3_index);
     if (!inside) throw new Error('Outside hexagon');
 
     const newNights = (addr.persistence_nights || 0) + 1;
-    // Weekly ping: only count if last_weekly_ping was > 7 days ago (or first ping)
     let newWeeklyPings = addr.weekly_pings || 0;
     const lastWeekly = addr.last_weekly_ping ? new Date(addr.last_weekly_ping) : null;
     const daysSinceWeekly = lastWeekly ? (Date.now() - lastWeekly.getTime()) / (1000 * 60 * 60 * 24) : 999;
@@ -169,14 +154,12 @@ export default function Dashboard({ lang = 'en' }) {
   const handleCheckin = async () => {
     if (!address) return;
 
-    // Time-lock check
     const remaining = getTimeLockRemaining(address.last_checkin);
     if (remaining > 0) {
       setCheckinMessage(`⏱ ${formatTimeRemaining(remaining)} until next check-in is allowed.`);
       return;
     }
 
-    // Sentinel Permanent block for Guests
     if (address.residency_type === 'Guest' && address.status === 'Resident') {
       setCheckinMessage('ℹ Guest residency cannot advance to Sentinel Permanent.');
       return;
@@ -186,7 +169,6 @@ export default function Dashboard({ lang = 'en' }) {
     setCheckinMessage('');
 
     if (!navigator.onLine) {
-      // OFFLINE: Queue locally
       queueCheckin({
         addressId: address.id,
         lat: address.latitude,
@@ -196,7 +178,6 @@ export default function Dashboard({ lang = 'en' }) {
       });
       setPendingSync(true);
       setCheckinMessage('📶 Offline — check-in saved locally. Will sync when connected.');
-      // Optimistic UI update: update last_checkin locally to trigger time-lock
       setAddress(prev => ({ ...prev, last_checkin: new Date().toISOString() }));
       setCheckingIn(false);
       return;
@@ -214,7 +195,7 @@ export default function Dashboard({ lang = 'en' }) {
         try {
           await applyCheckin(address, latitude, longitude);
           await loadData();
-          setCheckinMessage(`✓ Check-in confirmed. Keep returning to build your tier.`);
+          setCheckinMessage('✓ Check-in confirmed. Keep returning to build your tier.');
         } catch {
           setCheckinMessage('⚠ You are outside your registered hexagon. Move closer and try again.');
         }
@@ -239,7 +220,7 @@ export default function Dashboard({ lang = 'en' }) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#060B13' }}>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-green-500/30 border-t-green-500 rounded-full animate-spin" />
           <p className="text-slate-500 text-sm">Loading your Sentinel Address...</p>
         </div>
       </div>
@@ -257,7 +238,7 @@ export default function Dashboard({ lang = 'en' }) {
           <h2 className="text-xl font-bold text-white mb-2">No Address Found</h2>
           <p className="text-slate-500 text-sm mb-6">{tr('err_no_address')}</p>
           <a href="/get-id"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold transition-all">
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold transition-all">
             <Navigation className="w-4 h-4" /> Generate My Sentinel ID
           </a>
         </div>
@@ -297,21 +278,20 @@ export default function Dashboard({ lang = 'en' }) {
           </div>
         )}
         {pendingSync && isOnline && !syncMessage && (
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-            <RefreshCw className="w-4 h-4 text-blue-400 animate-spin" />
-            <p className="text-xs text-blue-400">Syncing offline check-ins...</p>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+            <RefreshCw className="w-4 h-4 text-green-400 animate-spin" />
+            <p className="text-xs text-green-400">Syncing offline check-ins...</p>
           </div>
         )}
 
         {/* Header Card */}
-        <div className="p-6 rounded-3xl border border-blue-900/40"
+        <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
-          <div className="h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent mb-5 -mx-6 px-6" />
+          <div className="h-px bg-gradient-to-r from-transparent via-green-500/40 to-transparent mb-5 -mx-6 px-6" />
 
           <div className="flex items-start justify-between mb-5">
             <div>
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">{tr('dash_title')}</p>
-              {/* Tier Badge */}
               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold border ${tierCfg.bg} ${tierCfg.border} ${tierCfg.color}`}>
                 <span>{tierCfg.icon}</span>
                 <span>{tier}</span>
@@ -366,7 +346,7 @@ export default function Dashboard({ lang = 'en' }) {
                 {address.sentinel_id}
               </span>
               <button onClick={handleCopy}
-                className="ml-3 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all">
+                className="ml-3 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-green-400 hover:border-green-500/50 transition-all">
                 {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
@@ -376,7 +356,7 @@ export default function Dashboard({ lang = 'en' }) {
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
-              <p className="text-xl font-bold text-blue-400 font-mono">{address.trust_score || 30}</p>
+              <p className="text-xl font-bold text-green-400 font-mono">{address.trust_score || 30}</p>
               <p className="text-xs text-slate-600 mt-0.5">{tr('dash_trust')}</p>
             </div>
             <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
@@ -404,6 +384,50 @@ export default function Dashboard({ lang = 'en' }) {
           <TrustArc score={address.trust_score || 30} nights={Math.min(nights, 3)} maxNights={3} />
 
           {/* Weekly ping nodes */}
+          <div className="mt-4 mb-5">
+            <p className="text-xs text-slate-600 uppercase tracking-wider mb-2">Weekly Pings (Sentinel Permanent)</p>
+            <div className="flex gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                  i < weeklyPings ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]' : 'bg-slate-800'
+                }`} />
+              ))}
+            </div>
+            {isGuestBlocked && (
+              <p className="text-xs text-amber-500/70 mt-1.5">🧳 Guest accounts cannot reach Sentinel Permanent</p>
+            )}
+          </div>
+
+          {isTimeLocked && <div className="mb-4"><TimeLockCountdown lastCheckin={address.last_checkin} /></div>}
+
+          <button
+            onClick={handleCheckin}
+            disabled={checkingIn || isMaxTier || (isTimeLocked && !checkinMessage)}
+            className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+              isMaxTier
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
+                : isTimeLocked
+                ? 'bg-slate-800/60 border border-slate-700/40 text-slate-600 cursor-not-allowed'
+                : !isOnline
+                ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
+                : 'bg-green-500 hover:bg-green-400 text-black shadow-[0_0_20px_rgba(74,222,128,0.3)]'
+            }`}
+          >
+            {checkingIn ? (
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
+            ) : isMaxTier ? (
+              <><CheckCircle className="w-4 h-4" /> Sentinel Permanent — Maximum Trust</>
+            ) : isTimeLocked ? (
+              <><Clock className="w-4 h-4" /> Time-Locked</>
+            ) : !isOnline ? (
+              <><WifiOff className="w-4 h-4" /> Check-in Offline (will sync)</>
+            ) : (
+              <><Navigation className="w-4 h-4" /> {tr('dash_checkin')}</>
+            )}
+          </button>
+
+          {checkinMessage && (
+            <div className={`mt-3 p-3 rounded-xl text-xs text-center ${
               checkinMessage.startsWith('✓') ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
               : checkinMessage.startsWith('📶') ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
               : 'bg-slate-800/60 border border-slate-700/30 text-slate-400'
@@ -427,18 +451,18 @@ export default function Dashboard({ lang = 'en' }) {
 
         {/* Physical Anchors */}
         {landmarks.length > 0 && (
-          <div className="p-6 rounded-3xl border border-blue-900/40"
+          <div className="p-6 rounded-3xl border border-slate-800/60"
             style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
             <h3 className="text-sm font-semibold text-white mb-4">{tr('dash_anchors')}</h3>
             <div className="space-y-3">
               {landmarks.map((lm) => (
                 <div key={lm.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-lg flex-shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-lg flex-shrink-0">
                     {LANDMARK_ICONS[lm.landmark_type] || '📍'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-bold text-blue-400 uppercase">{lm.landmark_type}</span>
+                      <span className="text-xs font-bold text-green-400 uppercase">{lm.landmark_type}</span>
                       <span className="text-xs text-slate-600">·</span>
                       <span className="text-xs text-slate-500">{lm.direction}</span>
                       {lm.is_primary && <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">Primary</span>}
@@ -453,12 +477,12 @@ export default function Dashboard({ lang = 'en' }) {
         )}
 
         {/* Deep Links */}
-        <div className="p-6 rounded-3xl border border-blue-900/40"
+        <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
           <h3 className="text-sm font-semibold text-white mb-4">{tr('dash_deep_link')}</h3>
           <div className="grid grid-cols-2 gap-3">
             <a href={address.google_maps_link} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-medium hover:bg-blue-500/20 transition-all">
+              className="flex items-center justify-center gap-2 py-3 rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 text-sm font-medium hover:bg-green-500/20 transition-all">
               <ExternalLink className="w-4 h-4" /> {tr('dash_google_maps')}
             </a>
             <a href={address.apple_maps_link} target="_blank" rel="noopener noreferrer"
