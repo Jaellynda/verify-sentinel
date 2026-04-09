@@ -71,7 +71,7 @@ export default function Landing({ lang = 'en' }) {
           <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight mb-6"
             style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '-0.03em' }}>
             {tr('hero_headline').split('\n').map((line, i) => (
-              <span key={i} className={i === 1 ? 'text-blue-400 block' : 'block'}>{line}</span>
+              <span key={i} className={i === 1 ? 'text-green-400 block' : 'block'}>{line}</span>
             ))}
           </h1>
 
@@ -115,7 +115,7 @@ export default function Landing({ lang = 'en' }) {
       <section id="personas" data-animate className="relative z-10 px-4 py-20">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Who Is This For?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-green-400 mb-3">Who Is This For?</h2>
             <p className="text-slate-500">Two use cases, one immutable infrastructure.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
@@ -124,7 +124,7 @@ export default function Landing({ lang = 'en' }) {
               style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
               <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-6 text-2xl">👤</div>
-              <h3 className="text-xl font-bold text-white mb-2">{tr('persona_individual')}</h3>
+              <h3 className="text-xl font-bold text-green-400 mb-2">{tr('persona_individual')}</h3>
               <p className="text-slate-400 mb-6">{tr('persona_individual_sub')}</p>
               <ul className="space-y-2 mb-8">
                 {['Works 100% offline', 'Shareable with banks & couriers', 'Builds trust over 3 nights', 'Multilingual support'].map(f => (
@@ -143,7 +143,7 @@ export default function Landing({ lang = 'en' }) {
               style={{ background: '#18181b' }}>
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/40 to-transparent" />
               <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-6 text-2xl">🏢</div>
-              <h3 className="text-xl font-bold text-white mb-2">{tr('persona_business')}</h3>
+              <h3 className="text-xl font-bold text-green-400 mb-2">{tr('persona_business')}</h3>
               <p className="text-zinc-400 mb-6">{tr('persona_business_sub')}</p>
               <ul className="space-y-2 mb-8">
                 {['Instant verification API', 'Trust score integration', 'Last-mile delivery maps', 'Bank KYC ready'].map(f => (
@@ -164,7 +164,7 @@ export default function Landing({ lang = 'en' }) {
       <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">The Technology</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-green-400 mb-3">The Technology</h2>
             <p className="text-slate-500 max-w-xl mx-auto">Built on Uber's H3 hexagonal indexing. Every hexagon is a mathematical fact — immutable, hierarchical, offline-computable.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -172,7 +172,7 @@ export default function Landing({ lang = 'en' }) {
               <div key={i} className="p-6 rounded-2xl border border-zinc-800 hover:border-green-500/30 transition-all group"
                 style={{ background: '#18181b' }}>
                 <div className="text-3xl mb-4">{f.icon}</div>
-                <h4 className="text-white font-semibold mb-2 group-hover:text-green-400 transition-colors">{f.title}</h4>
+                <h4 className="text-green-400 font-semibold mb-2 transition-colors">{f.title}</h4>
                 <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -190,7 +190,7 @@ export default function Landing({ lang = 'en' }) {
                 <span className="text-green-400 font-mono font-bold">H3</span>
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white">How H3 Works — Without Internet</h2>
+                <h2 className="text-2xl font-bold text-green-400">How H3 Works — Without Internet</h2>
                 <p className="text-slate-500 text-sm mt-0.5">Complex Math, Simplified for Africa.</p>
               </div>
             </div>

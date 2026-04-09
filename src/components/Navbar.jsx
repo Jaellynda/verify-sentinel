@@ -24,12 +24,12 @@ export default function Navbar({ lang, onLangChange }) {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="relative">
-              <Shield className="w-7 h-7 text-blue-400 group-hover:text-blue-300 transition-colors" />
-              <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-md group-hover:bg-blue-300/30 transition-all" />
+              <Shield className="w-7 h-7 text-green-400 group-hover:text-green-300 transition-colors" />
+              <div className="absolute inset-0 bg-green-400/20 rounded-full blur-md group-hover:bg-green-300/30 transition-all" />
             </div>
             <div>
               <span className="font-bold text-white tracking-tight text-lg">Verify</span>
-              <span className="font-bold text-blue-400 tracking-tight text-lg">Sentinel</span>
+              <span className="font-bold text-green-400 tracking-tight text-lg">Sentinel</span>
             </div>
           </Link>
 
