@@ -292,7 +292,7 @@ export default function GetMyID({ lang = 'en' }) {
   const badge = resBadge[currentRes] || resBadge[7];
 
   return (
-    <div className="min-h-screen pt-16" style={{ background: '#060B13' }}>
+    <div className="min-h-screen pt-16" style={{ background: '#0a0a0a' }}>
       <HexBackground opacity={0.06} />
 
       <div className="relative z-10 max-w-lg mx-auto px-4 py-10">
@@ -323,9 +323,9 @@ export default function GetMyID({ lang = 'en' }) {
 
         {/* ── STEP 0: GPS Acquisition ── */}
         {step === 0 && (
-          <div className="rounded-3xl border border-blue-900/40 overflow-hidden"
-            style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
-            <div className="h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
+          <div className="rounded-3xl border border-zinc-800 overflow-hidden"
+            style={{ background: '#18181b' }}>
+            <div className="h-px bg-gradient-to-r from-transparent via-green-500/30 to-transparent" />
 
             {/* Map — shown once GPS starts */}
             {showMap && (
@@ -444,7 +444,7 @@ export default function GetMyID({ lang = 'en' }) {
               {/* Actions */}
               {phase === 'idle' || phase === 'error' ? (
                 <button onClick={acquireGPS}
-                  className="w-full py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(59,130,246,0.35)]">
+                  className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(74,222,128,0.25)]">
                   <Navigation className="w-5 h-5" />
                   {phase === 'error' ? 'Retry GPS — or tap map to place manually' : 'Acquire GPS Signal'}
                 </button>
@@ -515,8 +515,8 @@ export default function GetMyID({ lang = 'en' }) {
 
         {/* ── STEP 1: Landmark Mapper ── */}
         {step === 1 && (
-          <div className="p-8 rounded-3xl border border-blue-900/40"
-            style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+          <div className="p-8 rounded-3xl border border-zinc-800"
+            style={{ background: '#18181b' }}>
             <div className="flex items-center gap-3 mb-6">
               <MapPin className="w-5 h-5 text-blue-400" />
               <div>
@@ -548,8 +548,8 @@ export default function GetMyID({ lang = 'en' }) {
         {/* ── STEP 2: Certification ── */}
         {step === 2 && savedAddress && (
           <div className="space-y-5">
-            <div className="p-8 rounded-3xl border border-emerald-500/30 text-center"
-              style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
+            <div className="p-8 rounded-3xl border border-green-500/30 text-center"
+              style={{ background: '#18181b' }}>
               <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
                 <Shield className="w-8 h-8 text-emerald-400" />
               </div>
@@ -567,7 +567,7 @@ export default function GetMyID({ lang = 'en' }) {
               </div>
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <a href={savedAddress.google_maps_link} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 text-sm font-medium hover:bg-blue-500/20 transition-all">
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 text-sm font-medium hover:bg-green-500/20 transition-all">
                   🗺️ Google Maps
                 </a>
                 <a href={savedAddress.apple_maps_link} target="_blank" rel="noopener noreferrer"
@@ -581,7 +581,7 @@ export default function GetMyID({ lang = 'en' }) {
               </div>
             </div>
             <button onClick={() => navigate('/dashboard')}
-              className="w-full py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold transition-all shadow-[0_0_25px_rgba(59,130,246,0.3)]">
+              className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold transition-all shadow-[0_0_25px_rgba(74,222,128,0.25)]">
               Go to My Dashboard →
             </button>
           </div>

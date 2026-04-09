@@ -45,7 +45,7 @@ export default function Landing({ lang = 'en' }) {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: '#060B13' }}>
+    <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
       <HexBackground scrollY={scrollY} opacity={0.12} />
 
       {/* Hero */}
@@ -98,8 +98,8 @@ export default function Landing({ lang = 'en' }) {
       </section>
 
       {/* Stats Bar */}
-      <section className="relative z-10 px-4 py-8 border-y border-blue-900/30"
-        style={{ background: 'rgba(6,6,6,0.85)', backdropFilter: 'blur(20px)' }}>
+      <section className="relative z-10 px-4 py-8 border-y border-zinc-800"
+        style={{ background: 'rgba(10,10,10,0.95)', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map((stat, i) => (
             <div key={i} className="text-center">
@@ -139,15 +139,15 @@ export default function Landing({ lang = 'en' }) {
             </div>
 
             {/* Business Card */}
-            <div className="group relative p-8 rounded-3xl border border-green-900/30 overflow-hidden transition-all duration-300 hover:border-green-500/40"
-              style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
+            <div className="group relative p-8 rounded-3xl border border-zinc-800 overflow-hidden transition-all duration-300 hover:border-green-500/30"
+              style={{ background: '#18181b' }}>
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/40 to-transparent" />
               <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-6 text-2xl">🏢</div>
               <h3 className="text-xl font-bold text-white mb-2">{tr('persona_business')}</h3>
-              <p className="text-slate-400 mb-6">{tr('persona_business_sub')}</p>
+              <p className="text-zinc-400 mb-6">{tr('persona_business_sub')}</p>
               <ul className="space-y-2 mb-8">
                 {['Instant verification API', 'Trust score integration', 'Last-mile delivery maps', 'Bank KYC ready'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
+                  <li key={f} className="flex items-center gap-2 text-sm text-zinc-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400" />{f}
                   </li>
                 ))}
@@ -161,7 +161,7 @@ export default function Landing({ lang = 'en' }) {
       </section>
 
       {/* Features Grid */}
-      <section className="relative z-10 px-4 py-20 border-t border-blue-900/20">
+      <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">The Technology</h2>
@@ -169,10 +169,10 @@ export default function Landing({ lang = 'en' }) {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map((f, i) => (
-              <div key={i} className="p-6 rounded-2xl border border-blue-900/30 hover:border-blue-500/30 transition-all group"
-                style={{ background: 'rgba(13,31,60,0.6)', backdropFilter: 'blur(10px)' }}>
+              <div key={i} className="p-6 rounded-2xl border border-zinc-800 hover:border-green-500/30 transition-all group"
+                style={{ background: '#18181b' }}>
                 <div className="text-3xl mb-4">{f.icon}</div>
-                <h4 className="text-white font-semibold mb-2 group-hover:text-blue-400 transition-colors">{f.title}</h4>
+                <h4 className="text-white font-semibold mb-2 group-hover:text-green-400 transition-colors">{f.title}</h4>
                 <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -181,10 +181,10 @@ export default function Landing({ lang = 'en' }) {
       </section>
 
       {/* H3 Math Section */}
-      <section className="relative z-10 px-4 py-20 border-t border-blue-900/20">
+      <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
         <div className="max-w-4xl mx-auto">
-          <div className="p-8 rounded-3xl border border-blue-500/20"
-            style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
+          <div className="p-8 rounded-3xl border border-zinc-800"
+          style={{ background: '#18181b' }}>
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
                 <span className="text-green-400 font-mono font-bold">H3</span>
@@ -226,7 +226,7 @@ export default function Landing({ lang = 'en' }) {
                 },
               ].map(item => (
                 <div key={item.step} className="flex gap-4">
-                  <div className="text-3xl font-bold text-blue-500/30 font-mono flex-shrink-0">{item.step}</div>
+                  <div className="text-3xl font-bold text-zinc-700 font-mono flex-shrink-0">{item.step}</div>
                   <div>
                     <p className="text-green-400 text-xs font-semibold uppercase tracking-wider mb-0.5">{item.metaphor}</p>
                     <h4 className="text-white font-semibold mb-1">{item.title}</h4>
@@ -244,10 +244,10 @@ export default function Landing({ lang = 'en' }) {
       </section>
 
       {/* Founder Section */}
-      <section className="relative z-10 px-4 py-20 border-t border-blue-900/20">
+      <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
         <div className="max-w-3xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-3xl border border-blue-900/30"
-            style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+          <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-3xl border border-zinc-800"
+            style={{ background: '#18181b' }}>
             <div className="relative flex-shrink-0">
               <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-green-500/40 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
                 <img src="https://media.base44.com/images/public/69d79295e7d49407d166ab9f/d02bc6e57_Screenshot2026-04-08at105618PM.png"
@@ -265,7 +265,7 @@ export default function Landing({ lang = 'en' }) {
                 "The Landmark Paradox is solvable. Every household in East Africa sits inside a mathematically unique H3 hexagon. We just needed to make that visible, persistent, and trustworthy."
               </p>
               <div className="flex gap-3 mt-4">
-                <span className="px-3 py-1 rounded-lg text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400">Geospatial Engineering</span>
+                <span className="px-3 py-1 rounded-lg text-xs bg-green-500/10 border border-green-500/20 text-green-400">Geospatial Engineering</span>
                 <span className="px-3 py-1 rounded-lg text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">AI Systems</span>
                 <span className="px-3 py-1 rounded-lg text-xs bg-amber-500/10 border border-amber-500/20 text-amber-400">East Africa</span>
               </div>
@@ -274,9 +274,32 @@ export default function Landing({ lang = 'en' }) {
         </div>
       </section>
 
+      {/* Northern Corridor Section */}
+      <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
+        <div className="max-w-4xl mx-auto">
+          <div className="p-8 rounded-3xl border border-green-500/20" style={{ background: '#18181b' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-xl">🛣️</div>
+              <div>
+                <p className="text-green-400 text-xs font-semibold uppercase tracking-widest">Cross-Border Infrastructure</p>
+                <h2 className="text-xl font-bold text-white">Crossing the Northern Corridor</h2>
+              </div>
+            </div>
+            <p className="text-zinc-400 leading-relaxed mb-4">
+              Sentinel IDs are <span className="text-green-400 font-semibold">cross-border compatible</span>, unlocking <span className="text-white font-bold">$100B in regional trade potential</span> between Mombasa, Kampala, and Goma. A driver in Mombasa can navigate to a Sentinel address in Goma with zero data — the hexagon math is universal.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {['🇰🇪 Mombasa Port', '🇺🇬 Kampala Hub', '🇨🇩 Goma Gateway', '🇷🇼 Kigali Corridor'].map(c => (
+                <span key={c} className="px-3 py-1.5 rounded-full text-xs bg-green-500/10 border border-green-500/20 text-green-400 font-medium">{c}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="relative z-10 border-t border-blue-900/30 px-4 py-10"
-        style={{ background: 'rgba(4,4,4,0.97)' }}>
+      <footer className="relative z-10 border-t border-zinc-800 px-4 py-10"
+        style={{ background: '#0a0a0a' }}>
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8">
             <div className="flex items-center gap-2">
@@ -290,8 +313,8 @@ export default function Landing({ lang = 'en' }) {
             </div>
           </div>
           {/* Live Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-2xl border border-blue-900/30"
-            style={{ background: 'rgba(13,31,60,0.5)' }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-2xl border border-zinc-800"
+            style={{ background: '#18181b' }}>
             {[
               { label: 'Current Hex Resolution', value: '9' },
               { label: 'Global Base Cells', value: '122' },

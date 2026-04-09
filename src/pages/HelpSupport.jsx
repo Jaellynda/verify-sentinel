@@ -96,7 +96,7 @@ export default function HelpSupport({ lang }) {
   };
 
   return (
-    <div className="min-h-screen pt-16" style={{ background: '#060606' }}>
+    <div className="min-h-screen pt-16" style={{ background: '#0a0a0a' }}>
       <HexBackground opacity={0.05} />
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-10 space-y-6">
 
@@ -111,8 +111,8 @@ export default function HelpSupport({ lang }) {
 
         {/* FAQ Sections */}
         {FAQS.map((section, si) => (
-          <div key={section.category} className="rounded-2xl border border-slate-800/60 overflow-hidden"
-            style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(10px)' }}>
+          <div key={section.category} className="rounded-2xl border border-zinc-800 overflow-hidden"
+            style={{ background: '#18181b' }}>
             <button
               onClick={() => setOpenCategory(openCategory === si ? null : si)}
               className="w-full flex items-center gap-3 p-5 text-left hover:bg-white/[0.02] transition-all">
@@ -151,8 +151,8 @@ export default function HelpSupport({ lang }) {
         ))}
 
         {/* Contact Form */}
-        <div className="p-6 rounded-2xl border border-green-900/30"
-          style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(20px)' }}>
+        <div className="p-6 rounded-2xl border border-zinc-800"
+          style={{ background: '#18181b' }}>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
               <Send className="w-4 h-4 text-green-400" />
@@ -174,7 +174,7 @@ export default function HelpSupport({ lang }) {
               <div>
                 <label className="text-xs text-slate-500 uppercase tracking-wider mb-1.5 block">Subject *</label>
                 <select value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
-                  className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 appearance-none cursor-pointer">
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 appearance-none cursor-pointer">
                   <option value="">Select a topic...</option>
                   {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -185,7 +185,7 @@ export default function HelpSupport({ lang }) {
                 <input type="text" placeholder="XXXX-XXXX-XXXX-XXX"
                   value={form.sentinel_id}
                   onChange={e => setForm(p => ({ ...p, sentinel_id: e.target.value }))}
-                  className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 placeholder-slate-600 font-mono" />
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 placeholder-zinc-600 font-mono" />
               </div>
 
               <div>
@@ -193,7 +193,7 @@ export default function HelpSupport({ lang }) {
                 <textarea rows={4} placeholder="Please describe your issue in detail. Include any error messages or steps you've already tried..."
                   value={form.message}
                   onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
-                  className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 placeholder-slate-600 resize-none" />
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 placeholder-zinc-600 resize-none" />
               </div>
 
               <button onClick={handleSubmit}

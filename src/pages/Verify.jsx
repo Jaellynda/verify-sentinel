@@ -88,7 +88,7 @@ export default function Verify({ lang = 'en' }) {
   };
 
   return (
-    <div className="min-h-screen pt-16" style={{ background: '#060B13' }}>
+    <div className="min-h-screen pt-16" style={{ background: '#0a0a0a' }}>
       <HexBackground opacity={0.08} />
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-12">
@@ -105,8 +105,8 @@ export default function Verify({ lang = 'en' }) {
         {/* Search Bar */}
         <div className="relative mb-8">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent rounded-t-2xl" />
-          <div className="flex gap-3 p-4 rounded-2xl border border-blue-900/40"
-            style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
+          <div className="flex gap-3 p-4 rounded-2xl border border-zinc-800"
+            style={{ background: '#18181b' }}>
             <input
               type="text"
               value={query}
@@ -142,12 +142,11 @@ export default function Verify({ lang = 'en' }) {
             {/* Verification Shield */}
             <div className="p-8 rounded-3xl border text-center"
               style={{
-                background: 'rgba(13,31,60,0.9)',
-                backdropFilter: 'blur(20px)',
-                borderColor: result.status === 'Verified' ? 'rgba(16,185,129,0.3)' : result.status === 'Partial' ? 'rgba(59,130,246,0.3)' : 'rgba(245,158,11,0.3)',
+                background: '#18181b',
+                borderColor: result.status === 'Verified' ? 'rgba(34,197,94,0.4)' : result.status === 'Partial' ? 'rgba(74,222,128,0.3)' : 'rgba(245,158,11,0.3)',
               }}>
               <div className="absolute top-0 left-0 right-0 h-px rounded-t-3xl"
-                style={{ background: result.status === 'Verified' ? 'linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)' : 'linear-gradient(90deg, transparent, rgba(59,130,246,0.4), transparent)' }} />
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(74,222,128,0.3), transparent)' }} />
 
               <VerificationShield status={result.status} score={result.trust_score} />
 
@@ -156,7 +155,7 @@ export default function Verify({ lang = 'en' }) {
                   result.status === 'Verified'
                     ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
                     : result.status === 'Partial'
-                    ? 'bg-blue-500/20 border border-blue-500/40 text-blue-400'
+                    ? 'bg-green-500/20 border border-green-500/40 text-green-400'
                     : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
                 }`}>
                   {result.status === 'Verified' ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
@@ -190,7 +189,7 @@ export default function Verify({ lang = 'en' }) {
                 { label: 'Vouches', value: result.vouches_count || 0 },
                 { label: 'Last Verified', value: result.last_checkin ? new Date(result.last_checkin).toLocaleDateString() : 'Not yet' },
               ].map(item => (
-                <div key={item.label} className="p-4 rounded-2xl border border-slate-700/30 bg-slate-900/40">
+                <div key={item.label} className="p-4 rounded-2xl border border-zinc-800 bg-zinc-900">
                   <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">{item.label}</p>
                   <p className="text-white font-semibold font-mono">{item.value}</p>
                 </div>
@@ -199,19 +198,19 @@ export default function Verify({ lang = 'en' }) {
 
             {/* Last-Mile Blueprint: Physical Anchors */}
             {landmarks.length > 0 && (
-              <div className="p-6 rounded-3xl border border-blue-900/40"
-                style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+              <div className="p-6 rounded-3xl border border-zinc-800"
+                style={{ background: '#18181b' }}>
                 <h3 className="text-sm font-semibold text-white mb-1">{tr('verify_blueprint')}</h3>
                 <p className="text-xs text-slate-500 mb-4">Physical anchors for last-mile navigation</p>
                 <div className="space-y-3">
                   {landmarks.map((lm, i) => (
-                    <div key={lm.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/50 border border-slate-700/30">
-                      <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-lg flex-shrink-0">
+                    <div key={lm.id} className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900 border border-zinc-700/50">
+                      <div className="w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-lg flex-shrink-0">
                         {LANDMARK_ICONS[lm.landmark_type] || '📍'}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-xs font-bold text-blue-400 uppercase">{lm.landmark_type}</span>
+                          <span className="text-xs font-bold text-green-400 uppercase">{lm.landmark_type}</span>
                           <span className="text-xs text-slate-600">·</span>
                           <span className="text-xs text-slate-500">{lm.direction}</span>
                           {lm.distance_meters && <span className="text-xs text-slate-600">· ~{lm.distance_meters}m</span>}
@@ -226,7 +225,7 @@ export default function Verify({ lang = 'en' }) {
 
             {/* Deep Link */}
             <a href={result.google_maps_link} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border border-green-500/30 bg-green-500/10 text-green-400 font-medium text-sm hover:bg-green-500/20 transition-all">
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all shadow-[0_0_20px_rgba(74,222,128,0.2)]">
               <ExternalLink className="w-4 h-4" /> Open in Google Maps
             </a>
           </div>
@@ -234,17 +233,17 @@ export default function Verify({ lang = 'en' }) {
 
         {/* Empty state with instructions */}
         {!result && !notFound && !loading && (
-          <div className="p-8 rounded-3xl border border-slate-800/60 text-center"
-            style={{ background: 'rgba(13,31,60,0.5)', backdropFilter: 'blur(10px)' }}>
+          <div className="p-8 rounded-3xl border border-zinc-800 text-center"
+            style={{ background: '#18181b' }}>
             <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-800/60 flex items-center justify-center mb-4">
               <Shield className="w-8 h-8 text-slate-600" />
             </div>
             <p className="text-slate-500 text-sm">Enter a Sentinel ID above to verify a client's location identity.</p>
-            <div className="mt-4 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-left">
-              <p className="text-xs text-slate-600 mb-2 uppercase tracking-wider">Use Cases</p>
+            <div className="mt-4 p-3 rounded-xl bg-zinc-900 border border-zinc-700/50 text-left">
+            <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Use Cases</p>
               {['Bank KYC verification', 'Delivery driver last-mile routing', 'Loan collateral address proof', 'Insurance location confirmation'].map(u => (
                 <div key={u} className="flex items-center gap-2 py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/40" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500/40" />
                   <span className="text-xs text-slate-500">{u}</span>
                 </div>
               ))}
