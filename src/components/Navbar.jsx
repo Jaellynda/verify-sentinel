@@ -18,8 +18,8 @@ export default function Navbar({ lang, onLangChange }) {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-blue-900/30"
-        style={{ background: 'rgba(13,31,60,0.92)', backdropFilter: 'blur(20px)' }}>
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/60"
+        style={{ background: 'rgba(4,8,18,0.97)', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
@@ -85,8 +85,8 @@ export default function Navbar({ lang, onLangChange }) {
         <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
-            className="absolute bottom-0 left-0 right-0 rounded-t-3xl p-6 border-t border-blue-900/40"
-            style={{ background: 'rgba(13,31,60,0.97)', backdropFilter: 'blur(20px)' }}
+            className="absolute bottom-0 left-0 right-0 rounded-t-3xl p-6 border-t border-zinc-800/60"
+            style={{ background: 'rgba(4,8,18,0.99)', backdropFilter: 'blur(20px)' }}
             onClick={e => e.stopPropagation()}>
             <div className="w-12 h-1 bg-slate-600 rounded-full mx-auto mb-6" />
             <div className="flex flex-col gap-1">
