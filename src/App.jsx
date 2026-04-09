@@ -13,6 +13,8 @@ import Navbar from './components/Navbar';
 import HelpSupport from './pages/HelpSupport';
 import AdminAnalytics from './pages/AdminAnalytics';
 import { useState } from 'react';
+import HexMap from './pages/HexMap';
+import OnboardingFlow from './components/OnboardingFlow';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -43,6 +45,7 @@ const AuthenticatedApp = () => {
 
   return (
     <>
+      <OnboardingFlow />
       <Navbar lang={lang} onLangChange={setLang} />
       <Routes>
         <Route path="/" element={<Landing lang={lang} />} />
@@ -51,6 +54,7 @@ const AuthenticatedApp = () => {
         <Route path="/verify" element={<Verify lang={lang} />} />
         <Route path="/help" element={<HelpSupport lang={lang} />} />
         <Route path="/admin" element={<AdminAnalytics lang={lang} />} />
+        <Route path="/map" element={<HexMap lang={lang} />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </>

@@ -12,6 +12,7 @@ export default function Navbar({ lang, onLangChange }) {
     { path: '/', label: 'Home' },
     { path: '/get-id', label: 'Get My ID' },
     { path: '/verify', label: 'Verify' },
+    { path: '/map', label: 'Hex Map' },
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/help', label: 'Help' },
   ];
