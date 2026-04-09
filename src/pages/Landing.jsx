@@ -1,0 +1,281 @@
+import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { Shield, ChevronRight, Zap, Globe, Lock, Users, Star, ArrowRight } from 'lucide-react';
+import HexBackground from '../components/HexBackground';
+import { translate } from '../lib/i18n';
+
+export default function Landing({ lang = 'en' }) {
+  const [scrollY, setScrollY] = useState(0);
+  const [visibleSections, setVisibleSections] = useState({});
+  const observerRef = useRef(null);
+
+  const tr = (key) => translate(lang, key);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => entries.forEach(e => {
+        if (e.isIntersecting) setVisibleSections(prev => ({ ...prev, [e.target.id]: true }));
+      }),
+      { threshold: 0.1 }
+    );
+    document.querySelectorAll('[data-animate]').forEach(el => observerRef.current.observe(el));
+    return () => observerRef.current?.disconnect();
+  }, []);
+
+  const features = [
+    { icon: '⬡', title: 'H3 Hexagonal Precision', desc: 'Res-9 hexagons (~174m²) provide stable IDs that don\'t change when you move 10 steps.' },
+    { icon: '📡', title: '100% Offline Generation', desc: 'Sentinel ID computed on-device from satellite GPS using compiled icosahedron geometry. Zero data needed.' },
+    { icon: '🔒', title: 'Anti-Fraud Persistence', desc: '3-consecutive-night detection algorithm prevents fake address claims. Trust score builds over time.' },
+    { icon: '🌍', title: 'East African First', desc: 'Built for Uganda, Kenya, Rwanda, DRC. Supports English, Luganda, Swahili, and French.' },
+    { icon: '🚚', title: 'Last-Mile Delivery', desc: 'Deep links to Google Maps & Apple Maps from any Sentinel ID. Delivery drivers arrive first time.' },
+    { icon: '🏦', title: 'Bank-Grade Verification', desc: 'Trust Score integrates neighbor vouching + persistence data for credit-ready location identity.' },
+  ];
+
+  const stats = [
+    { value: '122', label: 'Global Base Cells' },
+    { value: 'Res-9', label: 'Sentinel Resolution' },
+    { value: '174m²', label: 'Hex Area Average' },
+    { value: '4.7B+', label: 'Unique Hexagons (Res-9)' },
+  ];
+
+  return (
+    <div className="min-h-screen" style={{ background: '#060B13' }}>
+      <HexBackground scrollY={scrollY} opacity={0.12} />
+
+      {/* Hero */}
+      <section className="relative min-h-screen flex items-center justify-center px-4 pt-24 pb-16">
+        {/* Glowing orb */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        {/* Offline safety pill */}
+        <div className="absolute top-24 right-4 md:right-8 flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-sm animate-pulse">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="text-xs text-emerald-400 font-medium">{tr('forge_offline_safe')}</span>
+        </div>
+
+        <div className="relative z-10 text-center max-w-4xl mx-auto">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium uppercase tracking-widest mb-8">
+            <Shield className="w-3.5 h-3.5" />
+            MoICT 2025-2030 Digital Addressing Solution
+          </div>
+
+          {/* Headline */}
+          <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight mb-6"
+            style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '-0.03em' }}>
+            {tr('hero_headline').split('\n').map((line, i) => (
+              <span key={i} className={i === 1 ? 'text-blue-400 block' : 'block'}>{line}</span>
+            ))}
+          </h1>
+
+          <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed">
+            {tr('hero_sub')}
+          </p>
+
+          {/* Dual CTA */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link to="/get-id"
+              className="group flex items-center gap-3 px-8 py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-base transition-all duration-300 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)] w-full sm:w-auto justify-center">
+              <Shield className="w-5 h-5" />
+              {tr('cta_individual')}
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link to="/verify"
+              className="group flex items-center gap-3 px-8 py-4 rounded-2xl border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 font-semibold text-base transition-all duration-300 w-full sm:w-auto justify-center">
+              <Zap className="w-5 h-5" />
+              {tr('cta_business')}
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Bar */}
+      <section className="relative z-10 px-4 py-8 border-y border-blue-900/30"
+        style={{ background: 'rgba(13,31,60,0.7)', backdropFilter: 'blur(20px)' }}>
+        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+          {stats.map((stat, i) => (
+            <div key={i} className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-white mb-1"
+                style={{ fontFamily: '"JetBrains Mono", monospace' }}>{stat.value}</div>
+              <div className="text-xs text-slate-500 uppercase tracking-wider">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Persona Cards */}
+      <section id="personas" data-animate className="relative z-10 px-4 py-20">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Who Is This For?</h2>
+            <p className="text-slate-500">Two use cases, one immutable infrastructure.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Individual Card */}
+            <div className="group relative p-8 rounded-3xl border border-blue-900/40 overflow-hidden transition-all duration-300 hover:border-blue-500/50"
+              style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/60 to-transparent" />
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center mb-6 text-2xl">👤</div>
+              <h3 className="text-xl font-bold text-white mb-2">{tr('persona_individual')}</h3>
+              <p className="text-slate-400 mb-6">{tr('persona_individual_sub')}</p>
+              <ul className="space-y-2 mb-8">
+                {['Works 100% offline', 'Shareable with banks & couriers', 'Builds trust over 3 nights', 'Multilingual support'].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />{f}
+                  </li>
+                ))}
+              </ul>
+              <Link to="/get-id" className="flex items-center gap-2 text-blue-400 font-semibold text-sm group-hover:gap-3 transition-all">
+                Get My Sentinel ID <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Business Card */}
+            <div className="group relative p-8 rounded-3xl border border-emerald-900/40 overflow-hidden transition-all duration-300 hover:border-emerald-500/50"
+              style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mb-6 text-2xl">🏢</div>
+              <h3 className="text-xl font-bold text-white mb-2">{tr('persona_business')}</h3>
+              <p className="text-slate-400 mb-6">{tr('persona_business_sub')}</p>
+              <ul className="space-y-2 mb-8">
+                {['Instant verification API', 'Trust score integration', 'Last-mile delivery maps', 'Bank KYC ready'].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{f}
+                  </li>
+                ))}
+              </ul>
+              <Link to="/verify" className="flex items-center gap-2 text-emerald-400 font-semibold text-sm group-hover:gap-3 transition-all">
+                Verify a Client <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="relative z-10 px-4 py-20 border-t border-blue-900/20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">The Technology</h2>
+            <p className="text-slate-500 max-w-xl mx-auto">Built on Uber's H3 hexagonal indexing. Every hexagon is a mathematical fact — immutable, hierarchical, offline-computable.</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f, i) => (
+              <div key={i} className="p-6 rounded-2xl border border-blue-900/30 hover:border-blue-500/30 transition-all group"
+                style={{ background: 'rgba(13,31,60,0.6)', backdropFilter: 'blur(10px)' }}>
+                <div className="text-3xl mb-4">{f.icon}</div>
+                <h4 className="text-white font-semibold mb-2 group-hover:text-blue-400 transition-colors">{f.title}</h4>
+                <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* H3 Math Section */}
+      <section className="relative z-10 px-4 py-20 border-t border-blue-900/20">
+        <div className="max-w-4xl mx-auto">
+          <div className="p-8 rounded-3xl border border-blue-500/20"
+            style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <span className="text-blue-400 font-mono font-bold">H3</span>
+              </div>
+              <h2 className="text-2xl font-bold text-white">How H3 Works — Without Internet</h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {[
+                { step: '01', title: 'Icosahedron Projection', desc: 'Your GPS lat/lng is converted to 3D Cartesian (x,y,z) on a unit sphere. The 20-face icosahedron pre-computed in h3-js determines which face you\'re on via dot-product math.' },
+                { step: '02', title: 'IJK Axial Snapping', desc: 'Each icosahedron face carries a flat hexagonal grid using axial (i,j,k) coordinates where i+j+k=0. Your point is gnomonic-projected to 2D, then snapped to nearest hex via cube-rounding.' },
+                { step: '03', title: 'Aperture-7 Subdivision', desc: 'Resolution 0 has 122 base cells. Each resolution divides every hex into ~7 children: area(Rn) = area(R0) / 7ⁿ. At Resolution 9: ~174m² average area — perfect for a household.' },
+                { step: '04', title: '64-bit Index Encoding', desc: 'The final ID is a 64-bit integer: bits 63–59 = mode, bits 58–56 = resolution, bits 55–0 = hierarchical path. Encoded as a 15-char hex string. All lookup tables are compiled into h3-js — zero network calls.' },
+              ].map(item => (
+                <div key={item.step} className="flex gap-4">
+                  <div className="text-3xl font-bold text-blue-500/30 font-mono flex-shrink-0">{item.step}</div>
+                  <div>
+                    <h4 className="text-white font-semibold mb-1">{item.title}</h4>
+                    <p className="text-slate-500 text-sm leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Founder Section */}
+      <section className="relative z-10 px-4 py-20 border-t border-blue-900/20">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-3xl border border-blue-900/30"
+            style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+            <div className="relative flex-shrink-0">
+              <div className="w-24 h-24 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-4xl">
+                👩🏿‍💻
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-blue-500 border-2 border-slate-900 flex items-center justify-center">
+                <Star className="w-3 h-3 text-white" />
+              </div>
+            </div>
+            <div>
+              <p className="text-blue-400 text-xs uppercase tracking-widest mb-1 font-medium">Founder & CEO</p>
+              <h3 className="text-2xl font-bold text-white mb-1">Jael</h3>
+              <p className="text-slate-400 text-sm mb-3">M.Sc. Data Analytics Engineering — Production AI Engineering</p>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                "The Landmark Paradox is solvable. Every household in East Africa sits inside a mathematically unique H3 hexagon — we just needed to make that visible, persistent, and trustworthy."
+              </p>
+              <div className="flex gap-3 mt-4">
+                <span className="px-3 py-1 rounded-lg text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400">Geospatial Engineering</span>
+                <span className="px-3 py-1 rounded-lg text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">AI Systems</span>
+                <span className="px-3 py-1 rounded-lg text-xs bg-amber-500/10 border border-amber-500/20 text-amber-400">East Africa</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-blue-900/30 px-4 py-10"
+        style={{ background: 'rgba(6,11,19,0.95)' }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8">
+            <div className="flex items-center gap-2">
+              <Shield className="w-6 h-6 text-blue-400" />
+              <span className="font-bold text-white">VerifySentinel</span>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {['Uganda', 'Kenya', 'Rwanda', 'DRC'].map(c => (
+                <span key={c} className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer transition-colors">{c}</span>
+              ))}
+            </div>
+          </div>
+          {/* Live Stats Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-2xl border border-blue-900/30"
+            style={{ background: 'rgba(13,31,60,0.5)' }}>
+            {[
+              { label: 'Current Hex Resolution', value: '9' },
+              { label: 'Global Base Cells', value: '122' },
+              { label: 'EA Regional Satellites', value: 'Active ●' },
+              { label: 'Aperture Factor', value: '7 (H3 Standard)' },
+            ].map(item => (
+              <div key={item.label}>
+                <div className="text-xs text-slate-600 mb-0.5">{item.label}</div>
+                <div className="text-sm font-mono text-blue-400">{item.value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 text-center text-xs text-slate-700">
+            © 2025 Verify Sentinel · Digital Identity Layer for East Africa · H3 Hexagonal Indexing
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

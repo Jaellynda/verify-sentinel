@@ -1,0 +1,116 @@
+{
+  "name": "SentinelAddress",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "user_email": {
+      "type": "string",
+      "title": "User Email"
+    },
+    "sentinel_id": {
+      "type": "string",
+      "title": "Sentinel ID (formatted)"
+    },
+    "h3_index": {
+      "type": "string",
+      "title": "H3 Index (Res-9)"
+    },
+    "h3_index_res6": {
+      "type": "string",
+      "title": "H3 Index Res-6 (District)"
+    },
+    "h3_index_res8": {
+      "type": "string",
+      "title": "H3 Index Res-8 (Parish)"
+    },
+    "latitude": {
+      "type": "number",
+      "title": "Latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "title": "Longitude"
+    },
+    "hex_center_lat": {
+      "type": "number",
+      "title": "Hex Center Latitude"
+    },
+    "hex_center_lng": {
+      "type": "number",
+      "title": "Hex Center Longitude"
+    },
+    "country": {
+      "type": "string",
+      "title": "Country",
+      "enum": [
+        "Uganda",
+        "Kenya",
+        "Rwanda",
+        "DRC",
+        "Other"
+      ]
+    },
+    "region": {
+      "type": "string",
+      "title": "Region/District"
+    },
+    "status": {
+      "type": "string",
+      "title": "Verification Status",
+      "enum": [
+        "Pending",
+        "Partial",
+        "Verified"
+      ],
+      "default": "Pending"
+    },
+    "trust_score": {
+      "type": "number",
+      "title": "Trust Score (0-100)",
+      "default": 0
+    },
+    "persistence_nights": {
+      "type": "number",
+      "title": "Consecutive Nights Detected",
+      "default": 0
+    },
+    "last_checkin": {
+      "type": "string",
+      "title": "Last Check-in Timestamp"
+    },
+    "vouches_count": {
+      "type": "number",
+      "title": "Neighbor Vouches",
+      "default": 0
+    },
+    "google_maps_link": {
+      "type": "string",
+      "title": "Google Maps Deep Link"
+    },
+    "apple_maps_link": {
+      "type": "string",
+      "title": "Apple Maps Deep Link"
+    },
+    "language": {
+      "type": "string",
+      "title": "Preferred Language",
+      "enum": [
+        "en",
+        "lg",
+        "sw",
+        "fr"
+      ],
+      "default": "en"
+    }
+  },
+  "required": [
+    "h3_index",
+    "sentinel_id",
+    "latitude",
+    "longitude",
+    "status"
+  ]
+}

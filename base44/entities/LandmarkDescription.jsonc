@@ -1,0 +1,75 @@
+{
+  "name": "LandmarkDescription",
+  "type": "object",
+  "properties": {
+    "sentinel_address_id": {
+      "type": "string",
+      "title": "Sentinel Address ID"
+    },
+    "h3_index": {
+      "type": "string",
+      "title": "H3 Index"
+    },
+    "landmark_type": {
+      "type": "string",
+      "title": "Landmark Type",
+      "enum": [
+        "Kiosk",
+        "Petrol Station",
+        "School",
+        "Church/Mosque",
+        "Borehole",
+        "Market",
+        "Clinic/Hospital",
+        "Bar/Restaurant",
+        "Road Junction",
+        "Tree/Natural",
+        "Other"
+      ]
+    },
+    "direction": {
+      "type": "string",
+      "title": "Direction from Landmark",
+      "enum": [
+        "North",
+        "South",
+        "East",
+        "West",
+        "Behind",
+        "In Front",
+        "Left",
+        "Right",
+        "Opposite"
+      ]
+    },
+    "distance_meters": {
+      "type": "number",
+      "title": "Approximate Distance (meters)"
+    },
+    "description_text": {
+      "type": "string",
+      "title": "Human Description"
+    },
+    "ai_normalized": {
+      "type": "string",
+      "title": "AI-Normalized Description"
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "default": "en"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "title": "Primary Landmark",
+      "default": false
+    }
+  },
+  "required": [
+    "sentinel_address_id",
+    "h3_index",
+    "landmark_type",
+    "direction",
+    "description_text"
+  ]
+}

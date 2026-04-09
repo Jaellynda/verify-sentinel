@@ -3,8 +3,12 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
-import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import Landing from './pages/Landing';
+import GetMyID from './pages/GetMyID';
+import Dashboard from './pages/Dashboard';
+import Verify from './pages/Verify';
+import Navbar from './components/Navbar';
+import { useState } from 'react';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -31,11 +35,19 @@ const AuthenticatedApp = () => {
   }
 
   // Render the main app
+  const [lang, setLang] = useState('en');
+
   return (
-    <Routes>
-      {/* Add your page Route elements here */}
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+    <>
+      <Navbar lang={lang} onLangChange={setLang} />
+      <Routes>
+        <Route path="/" element={<Landing lang={lang} />} />
+        <Route path="/get-id" element={<GetMyID lang={lang} />} />
+        <Route path="/dashboard" element={<Dashboard lang={lang} />} />
+        <Route path="/verify" element={<Verify lang={lang} />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </>
   );
 };
 
