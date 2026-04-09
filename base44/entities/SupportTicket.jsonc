@@ -1,0 +1,53 @@
+{
+  "name": "SupportTicket",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "title": "User Email"
+    },
+    "user_name": {
+      "type": "string",
+      "title": "User Name"
+    },
+    "subject": {
+      "type": "string",
+      "title": "Subject",
+      "enum": [
+        "GPS Accuracy Issue",
+        "Residency Tier Question",
+        "Offline Sync Problem",
+        "Vouch Request",
+        "Account Issue",
+        "Other"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "title": "Message"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "Open",
+        "In Progress",
+        "Resolved"
+      ],
+      "default": "Open"
+    },
+    "admin_response": {
+      "type": "string",
+      "title": "Admin Response"
+    },
+    "sentinel_id": {
+      "type": "string",
+      "title": "Related Sentinel ID (optional)"
+    }
+  },
+  "required": [
+    "user_email",
+    "subject",
+    "message"
+  ]
+}

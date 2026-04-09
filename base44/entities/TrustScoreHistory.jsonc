@@ -1,0 +1,39 @@
+{
+  "name": "TrustScoreHistory",
+  "type": "object",
+  "properties": {
+    "sentinel_address_id": {
+      "type": "string",
+      "title": "Sentinel Address ID"
+    },
+    "user_email": {
+      "type": "string",
+      "title": "User Email"
+    },
+    "score": {
+      "type": "number",
+      "title": "Trust Score"
+    },
+    "event": {
+      "type": "string",
+      "title": "Event Type",
+      "enum": [
+        "checkin",
+        "vouch_received",
+        "weekly_ping",
+        "initial"
+      ],
+      "default": "checkin"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "sentinel_address_id",
+    "user_email",
+    "score",
+    "event"
+  ]
+}

@@ -13,6 +13,7 @@ export default function Navbar({ lang, onLangChange }) {
     { path: '/get-id', label: 'Get My ID' },
     { path: '/verify', label: 'Verify' },
     { path: '/dashboard', label: 'Dashboard' },
+    { path: '/help', label: 'Help' },
   ];
 
   return (
@@ -38,7 +39,7 @@ export default function Navbar({ lang, onLangChange }) {
               <Link key={item.path} to={item.path}
                 className={`text-sm font-medium transition-colors ${
                   location.pathname === item.path
-                    ? 'text-blue-400'
+                    ? 'text-green-400'
                     : 'text-slate-400 hover:text-white'
                 }`}>
                 {item.label}
@@ -94,7 +95,7 @@ export default function Navbar({ lang, onLangChange }) {
                   onClick={() => setMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     location.pathname === item.path
-                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      ? 'bg-green-500/10 text-green-400 border border-green-500/30'
                       : 'text-slate-300 hover:bg-white/5'
                   }`}>
                   {item.label}

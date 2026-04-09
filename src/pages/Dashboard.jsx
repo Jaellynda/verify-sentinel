@@ -8,6 +8,8 @@ import {
   hasPendingCheckins, getTimeLockRemaining, formatTimeRemaining
 } from '../lib/offlineQueue';
 import TrustArc from '../components/TrustArc';
+import TrustScoreGraph from '../components/TrustScoreGraph';
+import VouchingSystem from '../components/VouchingSystem';
 import HexBackground from '../components/HexBackground';
 
 /**
@@ -388,62 +390,20 @@ export default function Dashboard({ lang = 'en' }) {
           </div>
         </div>
 
+        {/* Trust Score Graph */}
+        <div className="p-6 rounded-3xl border border-slate-800/60"
+          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
+          <TrustScoreGraph addressId={address.id} userEmail={address.user_email} currentScore={address.trust_score || 30} />
+        </div>
+
         {/* Trust Arc + Check-in */}
-        <div className="p-6 rounded-3xl border border-blue-900/40"
-          style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+        <div className="p-6 rounded-3xl border border-slate-800/60"
+          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
           <h3 className="text-sm font-semibold text-white mb-1">{tr('dash_persistence')}</h3>
           <p className="text-xs text-slate-500 mb-5">{tr('dash_persistence_sub')}</p>
-
           <TrustArc score={address.trust_score || 30} nights={Math.min(nights, 3)} maxNights={3} />
 
           {/* Weekly ping nodes */}
-          <div className="mt-4 mb-5">
-            <p className="text-xs text-slate-600 uppercase tracking-wider mb-2">Weekly Pings (Sentinel Permanent)</p>
-            <div className="flex gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
-                  i < weeklyPings
-                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
-                    : 'bg-slate-800'
-                }`} />
-              ))}
-            </div>
-            {isGuestBlocked && (
-              <p className="text-xs text-amber-500/70 mt-1.5">🧳 Guest accounts cannot reach Sentinel Permanent</p>
-            )}
-          </div>
-
-          {/* Time lock countdown */}
-          {isTimeLocked && <div className="mb-4"><TimeLockCountdown lastCheckin={address.last_checkin} /></div>}
-
-          <button
-            onClick={handleCheckin}
-            disabled={checkingIn || isMaxTier || (isTimeLocked && !checkinMessage)}
-            className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-              isMaxTier
-                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
-                : isTimeLocked
-                ? 'bg-slate-800/60 border border-slate-700/40 text-slate-600 cursor-not-allowed'
-                : !isOnline
-                ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
-                : 'bg-blue-500 hover:bg-blue-400 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]'
-            }`}
-          >
-            {checkingIn ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
-            ) : isMaxTier ? (
-              <><CheckCircle className="w-4 h-4" /> Sentinel Permanent — Maximum Trust</>
-            ) : isTimeLocked ? (
-              <><Clock className="w-4 h-4" /> Time-Locked</>
-            ) : !isOnline ? (
-              <><WifiOff className="w-4 h-4" /> Check-in Offline (will sync)</>
-            ) : (
-              <><Navigation className="w-4 h-4" /> {tr('dash_checkin')}</>
-            )}
-          </button>
-
-          {checkinMessage && (
-            <div className={`mt-3 p-3 rounded-xl text-xs text-center ${
               checkinMessage.startsWith('✓') ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
               : checkinMessage.startsWith('📶') ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
               : 'bg-slate-800/60 border border-slate-700/30 text-slate-400'
@@ -451,6 +411,18 @@ export default function Dashboard({ lang = 'en' }) {
               {checkinMessage}
             </div>
           )}
+        </div>
+
+        {/* Vouching System */}
+        <div className="p-6 rounded-3xl border border-slate-800/60"
+          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
+          <VouchingSystem
+            addressId={address.id}
+            sentinelId={address.sentinel_id}
+            h3Index={address.h3_index}
+            vouchCount={address.vouches_count || 0}
+            onVouchAdded={loadData}
+          />
         </div>
 
         {/* Physical Anchors */}

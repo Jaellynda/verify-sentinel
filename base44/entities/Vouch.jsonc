@@ -1,0 +1,45 @@
+{
+  "name": "Vouch",
+  "type": "object",
+  "properties": {
+    "voucher_email": {
+      "type": "string",
+      "title": "Voucher Email"
+    },
+    "voucher_name": {
+      "type": "string",
+      "title": "Voucher Name"
+    },
+    "target_sentinel_id": {
+      "type": "string",
+      "title": "Target Sentinel ID"
+    },
+    "target_h3_index": {
+      "type": "string",
+      "title": "Target H3 Index"
+    },
+    "target_address_id": {
+      "type": "string",
+      "title": "Target Address Record ID"
+    },
+    "message": {
+      "type": "string",
+      "title": "Vouch Message"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "Pending",
+        "Confirmed",
+        "Rejected"
+      ],
+      "default": "Confirmed"
+    }
+  },
+  "required": [
+    "voucher_email",
+    "target_sentinel_id",
+    "target_address_id"
+  ]
+}

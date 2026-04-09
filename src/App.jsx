@@ -10,6 +10,8 @@ import GetMyID from './pages/GetMyID';
 import Dashboard from './pages/Dashboard';
 import Verify from './pages/Verify';
 import Navbar from './components/Navbar';
+import HelpSupport from './pages/HelpSupport';
+import AdminAnalytics from './pages/AdminAnalytics';
 import { useState } from 'react';
 // Add page imports here
 
@@ -47,6 +49,8 @@ const AuthenticatedApp = () => {
         <Route path="/get-id" element={<GetMyID lang={lang} />} />
         <Route path="/dashboard" element={<Dashboard lang={lang} />} />
         <Route path="/verify" element={<Verify lang={lang} />} />
+        <Route path="/help" element={<HelpSupport lang={lang} />} />
+        <Route path="/admin" element={<AdminAnalytics lang={lang} />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </>

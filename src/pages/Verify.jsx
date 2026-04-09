@@ -94,7 +94,7 @@ export default function Verify({ lang = 'en' }) {
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium uppercase tracking-widest mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-xs font-medium uppercase tracking-widest mb-4">
             <Zap className="w-3 h-3" />
             Business & Delivery
           </div>
@@ -118,7 +118,7 @@ export default function Verify({ lang = 'en' }) {
               maxLength={19}
             />
             <button onClick={handleVerify} disabled={loading || query.length < 4}
-              className="px-6 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm transition-all disabled:opacity-40 shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center gap-2">
+              className="px-6 py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all disabled:opacity-40 shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center gap-2">
               {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Search className="w-4 h-4" />}
               {tr('verify_search')}
             </button>
@@ -226,7 +226,7 @@ export default function Verify({ lang = 'en' }) {
 
             {/* Deep Link */}
             <a href={result.google_maps_link} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border border-blue-500/30 bg-blue-500/10 text-blue-400 font-medium text-sm hover:bg-blue-500/20 transition-all">
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl border border-green-500/30 bg-green-500/10 text-green-400 font-medium text-sm hover:bg-green-500/20 transition-all">
               <ExternalLink className="w-4 h-4" /> Open in Google Maps
             </a>
           </div>
