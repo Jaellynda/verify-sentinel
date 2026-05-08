@@ -1,30 +1,42 @@
 import { useState, useEffect } from 'react';
-import { Shield, MapPin, Zap, Users, ArrowRight, X, CheckCircle, Building2, User } from 'lucide-react';
+import { Shield, MapPin, Zap, Users, ArrowRight, X, CheckCircle, Building2, User, Map, Navigation } from 'lucide-react';
 
 const STEPS_INDIVIDUAL = [
   {
     icon: <Shield className="w-8 h-8 text-green-400" />,
     title: 'Welcome to Verify Sentinel',
     body: 'Your permanent digital address — generated offline from GPS coordinates using H3 hexagonal math. No street name required.',
+    tag: 'Step 1 of 5',
   },
   {
-    icon: <MapPin className="w-8 h-8 text-green-400" />,
-    title: 'Generate Your Sentinel ID',
-    body: 'Head to "Get My ID" and let your phone lock onto your exact hexagon. Works 100% offline — no data needed.',
+    icon: <Navigation className="w-8 h-8 text-green-400" />,
+    title: 'Step 1 — Generate Your Sentinel ID',
+    body: 'Tap "Get My ID" in the top navigation. Allow GPS access and wait for the hexagon to lock at Res-9 precision (~174m²). Or tap your exact location on the map.',
     highlight: '/get-id',
-    highlightLabel: 'Get My ID',
+    highlightLabel: 'Go to Get My ID →',
+    tag: 'Step 2 of 5',
+  },
+  {
+    icon: <Map className="w-8 h-8 text-green-400" />,
+    title: 'Step 2 — Find Yourself on the Hex Map',
+    body: 'Visit the Hex Map and search your coordinates or address. Your hexagon will highlight in green — claimed hexagons show trust scores and vouch counts.',
+    highlight: '/map',
+    highlightLabel: 'Open Hex Map →',
+    tag: 'Step 3 of 5',
   },
   {
     icon: <Zap className="w-8 h-8 text-green-400" />,
-    title: 'Build Your Trust Score',
-    body: 'Check in from your location 3 nights in a row to earn Resident status. Your trust score unlocks banking, delivery & more.',
+    title: 'Step 3 — Build Your Trust Score',
+    body: 'Check in from your location 3 nights in a row to earn Resident status. Your Dashboard tracks your score, check-in streak, and weekly pings.',
     highlight: '/dashboard',
-    highlightLabel: 'Dashboard',
+    highlightLabel: 'Go to Dashboard →',
+    tag: 'Step 4 of 5',
   },
   {
     icon: <Users className="w-8 h-8 text-green-400" />,
-    title: 'Get Vouched by Neighbors',
-    body: 'Ask nearby Sentinel users to vouch for your address. Each vouch adds +5 trust points — social proof for your location.',
+    title: 'Step 4 — Get Vouched by Neighbors',
+    body: 'Share your Sentinel ID with neighbours. Each confirmed vouch adds +5 trust points. 4 vouches = maximum social proof for banks and couriers.',
+    tag: 'Step 5 of 5',
   },
 ];
 
@@ -33,25 +45,29 @@ const STEPS_BUSINESS = [
     icon: <Shield className="w-8 h-8 text-green-400" />,
     title: 'Welcome to Verify Sentinel',
     body: 'Instantly verify client addresses, trust scores, and location identity — no street names needed across East Africa.',
+    tag: 'Step 1 of 4',
   },
   {
     icon: <Zap className="w-8 h-8 text-green-400" />,
-    title: 'Verify a Client',
-    body: 'Enter any Sentinel ID to retrieve trust score, residency tier, persistence history, and last-mile navigation links.',
+    title: 'Step 1 — Verify a Client',
+    body: 'Go to the Verify page, enter any client\'s Sentinel ID to instantly retrieve their trust score, residency tier, check-in history, and last-mile navigation link.',
     highlight: '/verify',
-    highlightLabel: 'Verify Page',
+    highlightLabel: 'Go to Verify →',
+    tag: 'Step 2 of 4',
   },
   {
-    icon: <MapPin className="w-8 h-8 text-green-400" />,
-    title: 'Explore the Hex Map',
-    body: 'Browse the interactive H3 hexagonal map. Click any hexagon to see claimable areas and existing Sentinel addresses.',
+    icon: <Map className="w-8 h-8 text-green-400" />,
+    title: 'Step 2 — Explore the Hex Map',
+    body: 'Browse the live H3 hexagonal map. Click any claimed hexagon to view trust scores, vouch counts, and residency tiers. Use search to navigate to any address or coordinate.',
     highlight: '/map',
-    highlightLabel: 'Hex Map',
+    highlightLabel: 'Open Hex Map →',
+    tag: 'Step 3 of 4',
   },
   {
     icon: <Building2 className="w-8 h-8 text-green-400" />,
-    title: 'Bank & KYC Ready',
-    body: 'Trust Score integrates neighbor vouching + check-in persistence. Ideal for credit scoring, insurance, and last-mile delivery.',
+    title: 'Step 3 — Bank & KYC Ready',
+    body: 'Trust Score integrates neighbor vouching + check-in persistence. Ideal for credit scoring, insurance, last-mile delivery, and formal address verification.',
+    tag: 'Step 4 of 4',
   },
 ];
 
@@ -128,7 +144,12 @@ export default function OnboardingFlow() {
         {/* TOUR PHASE */}
         {phase === 'tour' && (
           <div className="p-8">
-            {/* Step indicator */}
+            {/* Tag + step indicator */}
+            <div className="flex items-center justify-between mb-3">
+              {current.tag && (
+                <span className="text-xs text-slate-600 font-mono">{current.tag}</span>
+              )}
+            </div>
             <div className="flex gap-1.5 mb-6">
               {steps.map((_, i) => (
                 <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${
@@ -137,16 +158,16 @@ export default function OnboardingFlow() {
               ))}
             </div>
 
-            <div className="flex flex-col items-center text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-5">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-4">
                 {current.icon}
               </div>
               <h3 className="text-xl font-bold text-white mb-2">{current.title}</h3>
               <p className="text-slate-400 text-sm leading-relaxed">{current.body}</p>
               {current.highlight && (
                 <a href={current.highlight}
-                  className="mt-4 inline-flex items-center gap-1.5 text-xs text-green-400 border border-green-500/30 bg-green-500/10 px-3 py-1.5 rounded-full hover:bg-green-500/20 transition-all">
-                  Go to {current.highlightLabel} <ArrowRight className="w-3 h-3" />
+                  className="mt-4 inline-flex items-center gap-1.5 text-xs text-green-400 border border-green-500/30 bg-green-500/10 px-4 py-2 rounded-full hover:bg-green-500/20 transition-all font-semibold">
+                  {current.highlightLabel} <ArrowRight className="w-3 h-3" />
                 </a>
               )}
             </div>

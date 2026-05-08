@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, ChevronRight, Zap, Globe, Lock, Users, Star, ArrowRight } from 'lucide-react';
+import { Shield, ChevronRight, Zap, Globe, Lock, Users, ArrowRight } from 'lucide-react';
 import HexBackground from '../components/HexBackground';
 import { translate } from '../lib/i18n';
 
@@ -238,37 +238,6 @@ export default function Landing({ lang = 'en' }) {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Founder Section */}
-      <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-3xl border border-zinc-800"
-            style={{ background: '#18181b' }}>
-            <div className="relative flex-shrink-0">
-              <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-green-500/40 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
-                <img src="https://media.base44.com/images/public/69d79295e7d49407d166ab9f/d02bc6e57_Screenshot2026-04-08at105618PM.png"
-                  alt="Jael T Mugisha" className="w-full h-full object-cover object-top" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-slate-900 flex items-center justify-center">
-                <Star className="w-3 h-3 text-black" />
-              </div>
-            </div>
-            <div>
-              <p className="text-green-400 text-xs uppercase tracking-widest mb-1 font-medium">Founder & CEO</p>
-              <h3 className="text-2xl font-bold text-white mb-1">Jael T Mugisha</h3>
-              <p className="text-slate-400 text-sm mb-3">M.Sc. Data Analytics Engineering — Production AI Engineering</p>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                "The Landmark Paradox is solvable. Every household in East Africa sits inside a mathematically unique H3 hexagon. We just needed to make that visible, persistent, and trustworthy."
-              </p>
-              <div className="flex gap-3 mt-4">
-                <span className="px-3 py-1 rounded-lg text-xs bg-green-500/10 border border-green-500/20 text-green-400">Geospatial Engineering</span>
-                <span className="px-3 py-1 rounded-lg text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">AI Systems</span>
-                <span className="px-3 py-1 rounded-lg text-xs bg-amber-500/10 border border-amber-500/20 text-amber-400">East Africa</span>
-              </div>
             </div>
           </div>
         </div>

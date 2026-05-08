@@ -234,6 +234,29 @@ export default function HexMap() {
               <p className="text-base font-bold text-white font-mono tracking-wider mb-2">{selectedData.sentinel_id}</p>
             )}
 
+            {/* Trust Score Bar */}
+            {selectedData.trust_score != null && (
+              <div className="mb-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-500">Trust Score</span>
+                  <span className="text-green-400 font-mono font-bold">{selectedData.trust_score}/100</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${selectedData.trust_score}%`,
+                      background: selectedData.trust_score >= 80
+                        ? '#10b981'
+                        : selectedData.trust_score >= 50
+                        ? '#4ade80'
+                        : '#f59e0b',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-500">Status</span>
@@ -241,10 +264,13 @@ export default function HexMap() {
                   {selectedData.status || 'Unclaimed'}
                 </span>
               </div>
-              {selectedData.trust_score != null && (
+              {selectedData.vouches_count != null && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Trust Score</span>
-                  <span className="text-green-400 font-mono font-bold">{selectedData.trust_score}</span>
+                  <span className="text-slate-500">Vouches</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-pink-400 font-mono font-bold">{selectedData.vouches_count}</span>
+                    <span className="text-pink-400 text-xs">♥</span>
+                  </div>
                 </div>
               )}
               {selectedData.country && (
