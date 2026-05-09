@@ -11,6 +11,8 @@ import TrustArc from '../components/TrustArc';
 import TrustScoreGraph from '../components/TrustScoreGraph';
 import VouchingSystem from '../components/VouchingSystem';
 import HexBackground from '../components/HexBackground';
+import NIRAVerification from '../components/NIRAVerification';
+import AddressManagement from '../components/AddressManagement';
 
 const TIERS = {
   'Visitor': {
@@ -446,6 +448,30 @@ export default function Dashboard({ lang = 'en' }) {
             h3Index={address.h3_index}
             vouchCount={address.vouches_count || 0}
             onVouchAdded={loadData}
+          />
+        </div>
+
+        {/* NIRA Identity Verification */}
+        <div className="p-6 rounded-3xl border border-slate-800/60"
+          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-base">🇺🇬</span>
+            <h3 className="text-sm font-semibold text-white">NIRA Identity Verification</h3>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">Full KYC</span>
+          </div>
+          <NIRAVerification
+            addressId={address.id}
+            userEmail={address.user_email}
+            onVerified={loadData}
+          />
+        </div>
+
+        {/* Address Management & History */}
+        <div className="p-6 rounded-3xl border border-slate-800/60"
+          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
+          <AddressManagement
+            address={address}
+            onDeprecated={() => loadData()}
           />
         </div>
 

@@ -1,0 +1,72 @@
+{
+  "name": "AddressHistory",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "title": "User Email"
+    },
+    "sentinel_address_id": {
+      "type": "string",
+      "title": "Sentinel Address ID"
+    },
+    "sentinel_id": {
+      "type": "string",
+      "title": "Sentinel ID (formatted)"
+    },
+    "h3_index": {
+      "type": "string",
+      "title": "H3 Index"
+    },
+    "country": {
+      "type": "string",
+      "title": "Country"
+    },
+    "region": {
+      "type": "string",
+      "title": "Region"
+    },
+    "trust_score_at_deprecation": {
+      "type": "number",
+      "title": "Trust Score at Time of Deprecation"
+    },
+    "vouches_at_deprecation": {
+      "type": "number",
+      "title": "Vouches at Time of Deprecation"
+    },
+    "nights_at_deprecation": {
+      "type": "number",
+      "title": "Check-ins at Time of Deprecation"
+    },
+    "status_at_deprecation": {
+      "type": "string",
+      "title": "Residency Status at Deprecation"
+    },
+    "reason": {
+      "type": "string",
+      "title": "Reason for Address Change",
+      "enum": [
+        "Relocated",
+        "Evicted",
+        "Property Sold",
+        "Seasonal Move",
+        "Other"
+      ],
+      "default": "Relocated"
+    },
+    "new_sentinel_address_id": {
+      "type": "string",
+      "title": "New Sentinel Address ID (if transferred)"
+    },
+    "deprecated_at": {
+      "type": "string",
+      "title": "Deprecated At (ISO timestamp)"
+    }
+  },
+  "required": [
+    "user_email",
+    "sentinel_address_id",
+    "sentinel_id",
+    "h3_index"
+  ]
+}

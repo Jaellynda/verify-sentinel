@@ -1,0 +1,66 @@
+{
+  "name": "NIRAVerification",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "title": "User Email"
+    },
+    "sentinel_address_id": {
+      "type": "string",
+      "title": "Linked Sentinel Address ID"
+    },
+    "nira_nin": {
+      "type": "string",
+      "title": "National Identification Number (NIN)"
+    },
+    "full_name_on_card": {
+      "type": "string",
+      "title": "Full Name (as on NIN card)"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "title": "Date of Birth"
+    },
+    "district_of_origin": {
+      "type": "string",
+      "title": "District of Origin"
+    },
+    "verification_status": {
+      "type": "string",
+      "title": "Verification Status",
+      "enum": [
+        "Pending",
+        "Verified",
+        "Failed",
+        "Expired"
+      ],
+      "default": "Pending"
+    },
+    "verified_at": {
+      "type": "string",
+      "title": "Verified At (ISO timestamp)"
+    },
+    "nin_card_image_url": {
+      "type": "string",
+      "title": "NIN Card Image URL"
+    },
+    "selfie_image_url": {
+      "type": "string",
+      "title": "Selfie Image URL"
+    },
+    "match_confidence": {
+      "type": "number",
+      "title": "AI Match Confidence (0-100)"
+    },
+    "failure_reason": {
+      "type": "string",
+      "title": "Failure Reason"
+    }
+  },
+  "required": [
+    "user_email",
+    "sentinel_address_id",
+    "nira_nin"
+  ]
+}
