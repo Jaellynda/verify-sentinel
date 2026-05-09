@@ -5,6 +5,32 @@ import HexBackground from '../components/HexBackground';
 
 const FAQS = [
   {
+    category: 'Address Changes & KYC',
+    icon: '🔄',
+    items: [
+      {
+        q: 'What happens to my Sentinel ID if I move to a new location?',
+        a: 'Your existing Sentinel ID remains permanently linked to your original hexagon — it is never deleted or overwritten. When you move, you generate a new Sentinel ID for your new location by visiting "Get My ID" and completing the 3-night check-in process from there. This creates a new address record while your old one is preserved as historical data, giving banks and couriers a verifiable address timeline.',
+      },
+      {
+        q: 'Will I lose my trust score and vouch history when I move?',
+        a: 'Your trust score and vouch history are tied to each specific address record, not to your account globally. This is by design: a bank cares that you have 90 days of persistence at your current address, not a previous one. Your old address record retains its full score and history as an audit trail, while your new address starts fresh and builds its own trust score. This prevents people from fraudulently transferring "earned trust" from a different location.',
+      },
+      {
+        q: 'How do I tell my bank or courier about my new Sentinel ID?',
+        a: 'Once you have generated your new Sentinel ID and begun check-ins, simply share the new ID with your institution. The Verify page allows any business to instantly look up your new ID and see your current trust score, residency tier, landmark anchors, and last-mile navigation link. There is no central update required — the ID itself carries all necessary verification data.',
+      },
+      {
+        q: 'How does address change history support KYC accuracy for banks?',
+        a: 'Banks performing KYC benefit from the immutable address history in three ways: (1) They can see when an address was first registered and how long persistence was maintained — a 90-day old address with 80+ trust score is strong proof of habitation. (2) If a customer claims to have "always lived" at a new address but the system shows it was registered last week, that is a fraud signal. (3) Multiple simultaneous active addresses under one account would be a red flag. The system creates a transparent, tamper-resistant residency record that is far more reliable than a self-reported form field.',
+      },
+      {
+        q: 'Can I have more than one active Sentinel ID at the same time?',
+        a: 'Yes — this is valid for people with two residences (e.g., rural family home + urban rental). Each address builds its own trust score independently. However, businesses and banks can query all addresses linked to your account email, so attempting to inflate trust by maintaining a fraudulent secondary address is detectable. Legitimate multi-address use cases (seasonal workers, students, etc.) are fully supported.',
+      },
+    ],
+  },
+  {
     category: 'GPS & Accuracy',
     icon: '📡',
     items: [

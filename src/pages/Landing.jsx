@@ -243,6 +243,107 @@ export default function Landing({ lang = 'en' }) {
         </div>
       </section>
 
+      {/* Addressing Challenges Section */}
+      <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs font-medium uppercase tracking-widest mb-4">
+              🏚️ The Problem We Solve
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">When There Is No Street Name</h2>
+            <p className="text-slate-500 max-w-xl mx-auto">Over 1 billion people live in areas with no formal address. H3 hexagons give every kiosk, shack, and borehole a permanent, verifiable identity.</p>
+          </div>
+
+          {/* Challenge cards */}
+          <div className="grid md:grid-cols-3 gap-5 mb-12">
+            {[
+              {
+                icon: '🏚️',
+                title: 'Kiosks & Shacks',
+                problem: 'No house number. No street name. No postal code.',
+                solution: 'The H3 hex is the address. A ~174m² cell uniquely identifies your structure regardless of what surrounds it.',
+                color: 'border-amber-500/20',
+              },
+              {
+                icon: '🛣️',
+                title: 'Unnamed Roads',
+                problem: '70%+ of roads in Uganda have no official name. Delivery fails.',
+                solution: 'Landmark anchors (kiosk, borehole, church) replace street names with real-world reference points that locals actually use.',
+                color: 'border-blue-500/20',
+              },
+              {
+                icon: '📍',
+                title: 'GPS Drift & Jitter',
+                problem: 'A standard pin can jump 20–50m, placing deliveries at the wrong compound.',
+                solution: 'H3\'s "Digital Magnet" snaps your position to the hex center — GPS jitter cannot move you to a neighbour\'s cell.',
+                color: 'border-green-500/20',
+              },
+            ].map((c, i) => (
+              <div key={i} className={`p-6 rounded-2xl border ${c.color} bg-zinc-900`}>
+                <div className="text-3xl mb-3">{c.icon}</div>
+                <h4 className="text-white font-semibold mb-2">{c.title}</h4>
+                <div className="mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <p className="text-xs text-red-400 leading-relaxed">❌ {c.problem}</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <p className="text-xs text-green-400 leading-relaxed">✓ {c.solution}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pin Drop vs Sentinel comparison */}
+          <div className="p-6 rounded-3xl border border-zinc-700"
+            style={{ background: '#18181b' }}>
+            <h3 className="text-lg font-bold text-white text-center mb-6">Pin Drop vs. Sentinel ID — Last-Mile Delivery</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Pin Drop column */}
+              <div className="p-5 rounded-2xl border border-red-900/40 bg-red-950/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-base">📌</div>
+                  <span className="text-red-400 font-semibold text-sm">Standard Pin Drop</span>
+                </div>
+                <ul className="space-y-2.5">
+                  {[
+                    'Coordinates jump 20–50m with GPS jitter',
+                    'No proof the person lives there',
+                    'Driver still lost without street context',
+                    'Anyone can drop a fake pin',
+                    'No trust signal for banks or couriers',
+                    'Address changes silently — no audit trail',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                      <span className="text-red-500 mt-0.5 flex-shrink-0">✗</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {/* Sentinel column */}
+              <div className="p-5 rounded-2xl border border-green-900/40 bg-green-950/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-base">⬡</div>
+                  <span className="text-green-400 font-semibold text-sm">Sentinel ID (H3 Res-9)</span>
+                </div>
+                <ul className="space-y-2.5">
+                  {[
+                    'Stable hex cell — GPS drift cannot change your ID',
+                    '3-night check-in proves habitation, not just presence',
+                    'Landmark anchors guide drivers to the exact compound',
+                    'Anti-fraud: hex boundary enforcement + time lock',
+                    'Trust score = verifiable signal for KYC & credit',
+                    'Immutable address history trail when you move',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-300">
+                      <span className="text-green-400 mt-0.5 flex-shrink-0">✓</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Northern Corridor Section */}
       <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
         <div className="max-w-4xl mx-auto">
