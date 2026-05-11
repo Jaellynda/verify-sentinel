@@ -114,7 +114,11 @@ export default function PhysicalAnchors({ landmarks, onChanged }) {
   const handleDelete = async (id) => {
     setDeletingId(id);
     setConfirmDeleteId(null);
-    await base44.entities.LandmarkDescription.delete(id);
+    try {
+      await base44.entities.LandmarkDescription.delete(id);
+    } catch {
+      // Already deleted or not found — treat as success
+    }
     setDeletingId(null);
     onChanged();
   };
