@@ -339,8 +339,9 @@ export default function GetMyID({ lang = 'en' }) {
                   attributionControl={false}
                 >
                   <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                     attribution=""
+                    maxZoom={19}
                   />
                   <MapClickHandler onMapClick={handleMapClick} />
                   {currentH3 && <HexPolygon h3Index={currentH3} phase={phase} />}

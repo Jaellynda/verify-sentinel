@@ -15,6 +15,7 @@ export default function Navbar({ lang, onLangChange }) {
     { path: '/map', label: 'Hex Map' },
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/help', label: 'Help' },
+    { path: '/verification-guide', label: 'Verify Guide' },
   ];
 
   return (

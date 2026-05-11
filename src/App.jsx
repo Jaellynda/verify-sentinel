@@ -15,6 +15,7 @@ import AdminAnalytics from './pages/AdminAnalytics';
 import { useState } from 'react';
 import HexMap from './pages/HexMap';
 import OnboardingFlow from './components/OnboardingFlow';
+import VerificationGuide from './pages/VerificationGuide';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -52,6 +53,7 @@ const AuthenticatedApp = () => {
         <Route path="/help" element={<HelpSupport lang={lang} />} />
         <Route path="/admin" element={<AdminAnalytics lang={lang} />} />
         <Route path="/map" element={<HexMap lang={lang} />} />
+        <Route path="/verification-guide" element={<VerificationGuide />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </>

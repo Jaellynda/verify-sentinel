@@ -108,7 +108,7 @@ export default function HexMap() {
     setSearching(true);
     const q = searchQuery.trim();
 
-    // Try as coords: "lat,lng"
+    // 1. Coordinates: "lat,lng"
     const coordMatch = q.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
     if (coordMatch) {
       const lat = parseFloat(coordMatch[1]);
@@ -122,7 +122,7 @@ export default function HexMap() {
       return;
     }
 
-    // Try as Sentinel ID lookup
+    // 2. Sentinel ID
     const cleanId = q.toUpperCase().replace(/[^A-F0-9]/g, '');
     if (cleanId.length === 15) {
       const formatted = `${cleanId.slice(0,4)}-${cleanId.slice(4,8)}-${cleanId.slice(8,12)}-${cleanId.slice(12)}`;
@@ -139,9 +139,44 @@ export default function HexMap() {
       }
     }
 
-    // Try geocode via LLM
+    // 3. Landmark description search in DB
+    const landmarkResults = await base44.entities.LandmarkDescription.list('-created_date', 200);
+    const match = landmarkResults.find(lm =>
+      lm.description_text?.toLowerCase().includes(q.toLowerCase()) ||
+      lm.ai_normalized?.toLowerCase().includes(q.toLowerCase())
+    );
+    if (match) {
+      const addrResults = await base44.entities.SentinelAddress.filter({ h3_index: match.h3_index });
+      if (addrResults.length) {
+        const addr = addrResults[0];
+        const center = cellToLatLng(addr.h3_index);
+        setFlyTo([center[0], center[1]]);
+        setSelectedHex(addr.h3_index);
+        setSelectedData(addr);
+        setHexagons(generateVisibleHexagons(center[0], center[1], 5));
+        setSearching(false);
+        return;
+      }
+    }
+
+    // 4. District/region search in DB
+    const regionMatch = Object.values(claimedMap).find(addr =>
+      addr.region?.toLowerCase().includes(q.toLowerCase()) ||
+      addr.country?.toLowerCase().includes(q.toLowerCase())
+    );
+    if (regionMatch) {
+      const center = cellToLatLng(regionMatch.h3_index);
+      setFlyTo([center[0], center[1]]);
+      setSelectedHex(regionMatch.h3_index);
+      setSelectedData(regionMatch);
+      setHexagons(generateVisibleHexagons(center[0], center[1], 5));
+      setSearching(false);
+      return;
+    }
+
+    // 5. LLM geocode for any place name / district
     const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Return the latitude and longitude for this location: "${q}". Only output JSON with lat and lng keys.`,
+      prompt: `Return the latitude and longitude for this East African location or landmark description: "${q}". Focus on Uganda, Kenya, Rwanda, DRC. Only output JSON with lat and lng keys.`,
       response_json_schema: { type: 'object', properties: { lat: { type: 'number' }, lng: { type: 'number' } } },
     });
     if (res?.lat && res?.lng) {
@@ -174,7 +209,7 @@ export default function HexMap() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            placeholder="Search address, coords (lat,lng), or Sentinel ID…"
+            placeholder="Landmark, district, coords (lat,lng), or Sentinel ID…"
             className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none text-sm px-2"
           />
           {searchQuery && (
@@ -312,8 +347,9 @@ export default function HexMap() {
           attributionControl={false}
         >
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution=""
+            maxZoom={19}
           />
           {flyTo && <MapController center={flyTo} />}
           <DynamicHexLoader onHexagonsChange={setHexagons} zoom={zoom} />

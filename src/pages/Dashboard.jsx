@@ -14,6 +14,7 @@ import HexBackground from '../components/HexBackground';
 import NIRAVerification from '../components/NIRAVerification';
 import AddressManagement from '../components/AddressManagement';
 import AddressHistoryTrail from '../components/AddressHistoryTrail';
+import TrustBadge from '../components/TrustBadge';
 
 const TIERS = {
   'Visitor': {
@@ -262,7 +263,7 @@ export default function Dashboard({ lang = 'en' }) {
     <div className="min-h-screen pt-16" style={{ background: '#060B13' }}>
       <HexBackground opacity={0.07} />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-4 py-10 space-y-5">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-10 space-y-5">
 
         {/* Offline / Sync Banner */}
         {!isOnline && (
@@ -287,7 +288,8 @@ export default function Dashboard({ lang = 'en' }) {
           </div>
         )}
 
-        {/* Header Card */}
+        {/* Header Card + NIRA side-by-side */}
+        <div className="grid lg:grid-cols-2 gap-5">
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
           <div className="h-px bg-gradient-to-r from-transparent via-green-500/40 to-transparent mb-5 -mx-6 px-6" />
@@ -384,13 +386,23 @@ export default function Dashboard({ lang = 'en' }) {
           </div>
         </div>
 
-        {/* Trust Score Graph */}
-        <div className="p-6 rounded-3xl border border-slate-800/60"
+        {/* NIRA panel — right column on desktop */}
+        <div className="p-6 rounded-3xl border border-slate-800/60 flex flex-col"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
-          <TrustScoreGraph addressId={address.id} userEmail={address.user_email} currentScore={address.trust_score || 30} />
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-base">🇺🇬</span>
+            <h3 className="text-sm font-semibold text-white">NIRA Identity Verification</h3>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">Full KYC</span>
+          </div>
+          <NIRAVerification
+            addressId={address.id}
+            userEmail={address.user_email}
+            onVerified={loadData}
+          />
         </div>
+        </div>{/* end header+NIRA grid */}
 
-        {/* Trust Arc + Check-in */}
+        {/* Trust Arc + Check-in (Persistence) */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
           <h3 className="text-sm font-semibold text-white mb-1">{tr('dash_persistence')}</h3>
@@ -463,19 +475,10 @@ export default function Dashboard({ lang = 'en' }) {
           />
         </div>
 
-        {/* NIRA Identity Verification */}
+        {/* Trust Score Graph */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-base">🇺🇬</span>
-            <h3 className="text-sm font-semibold text-white">NIRA Identity Verification</h3>
-            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">Full KYC</span>
-          </div>
-          <NIRAVerification
-            addressId={address.id}
-            userEmail={address.user_email}
-            onVerified={loadData}
-          />
+          <TrustScoreGraph addressId={address.id} userEmail={address.user_email} currentScore={address.trust_score || 30} />
         </div>
 
         {/* Address History Trail */}
@@ -487,13 +490,19 @@ export default function Dashboard({ lang = 'en' }) {
           />
         </div>
 
-        {/* Address Management & History */}
+        {/* Address Management */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
           <AddressManagement
             address={address}
             onDeprecated={() => loadData()}
           />
+        </div>
+
+        {/* Trust Badge */}
+        <div className="p-6 rounded-3xl border border-slate-800/60"
+          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
+          <TrustBadge address={address} />
         </div>
 
         {/* Physical Anchors */}
