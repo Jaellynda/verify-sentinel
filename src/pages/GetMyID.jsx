@@ -24,12 +24,12 @@ L.Icon.Default.mergeOptions({
 });
 
 /**
- * GPS ACCURACY → H3 RESOLUTION MAPPING
+ * GPS ACCURACY → PRECISION MAPPING
  * ─────────────────────────────────────────────────────────────
- * accuracy > 200m  → Res-7  "Ghost Hexagon" (~5km²)  — orientation only
- * accuracy 50–200m → Res-8  "Refining"      (~0.7km²) — parish level
- * accuracy < 50m   → Res-9  "Locked"        (~174m²)  — Sentinel ID
- * Manual override  → Res-9  "Confirmed"     (~174m²)  — user-placed pin
+ * accuracy > 200m  → Low precision  "Ghost" — orientation only
+ * accuracy 50–200m → Mid precision  "Refining" — area level
+ * accuracy < 50m   → High precision "Locked"   — Sentinel ID
+ * Manual override  → High precision "Confirmed" — user-placed pin
  * Save unlocks at: accuracy ≤ 10m OR manual confirm
  * ─────────────────────────────────────────────────────────────
  */
@@ -42,9 +42,9 @@ function getResolutionForAccuracy(accuracy) {
 const STATUS_STAGES = [
   { phase: 'idle',      text: 'Ready to acquire GPS signal', color: 'text-slate-500' },
   { phase: 'searching', text: 'Searching for satellites...', color: 'text-amber-400' },
-  { phase: 'ghost',     text: 'Satellite found — rendering Ghost Hexagon (Res-7)...', color: 'text-blue-400' },
-  { phase: 'refining',  text: 'Refining location — upgrading to Res-8...', color: 'text-blue-400' },
-  { phase: 'locked',    text: '✓ Sentinel ID Locked at Res-9', color: 'text-emerald-400' },
+  { phase: 'ghost',     text: 'Satellite found — establishing approximate location...', color: 'text-blue-400' },
+  { phase: 'refining',  text: 'Refining location — improving precision...', color: 'text-blue-400' },
+  { phase: 'locked',    text: '✓ Sentinel ID Locked — high precision confirmed', color: 'text-emerald-400' },
   { phase: 'manual',    text: '✓ Manual location confirmed — Sentinel ID ready', color: 'text-emerald-400' },
   { phase: 'error',     text: 'GPS unavailable — use manual map placement', color: 'text-red-400' },
 ];
@@ -316,9 +316,9 @@ export default function GetMyID({ lang = 'en' }) {
 
   // Resolution badge color
   const resBadge = {
-    7: { bg: 'bg-slate-700/60', text: 'text-slate-400', label: 'Res-7 Ghost' },
-    8: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Res-8 Refining' },
-    9: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Res-9 Locked' },
+    7: { bg: 'bg-slate-700/60', text: 'text-slate-400', label: 'Low Precision' },
+    8: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Refining...' },
+    9: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Locked ✓' },
   };
   const badge = resBadge[currentRes] || resBadge[7];
 
@@ -450,7 +450,7 @@ export default function GetMyID({ lang = 'en' }) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-slate-600 uppercase tracking-wider mb-0.5">
-                        {phase === 'ghost' ? 'Approximate ID (Res-7)' : phase === 'refining' ? 'Draft ID (Res-8)' : 'Sentinel ID (Res-9)'}
+                        {phase === 'ghost' ? 'Approximate ID' : phase === 'refining' ? 'Draft ID' : 'Sentinel ID'}
                       </p>
                       <p className={`text-lg font-bold tracking-wider transition-all ${
                         phase === 'locked' || phase === 'manual' ? 'text-white' : 'text-slate-500'
@@ -540,7 +540,7 @@ export default function GetMyID({ lang = 'en' }) {
               {/* Offline safety pill */}
               <div className="flex items-center justify-center gap-1.5 mt-4">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs text-emerald-600">{tr('forge_offline_safe')} — H3 math runs entirely on-device</span>
+                <span className="text-xs text-emerald-600">{tr('forge_offline_safe')} — our technology runs entirely on-device</span>
               </div>
             </div>
           </div>

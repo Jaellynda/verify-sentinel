@@ -108,13 +108,18 @@ export default function Dashboard({ lang = 'en' }) {
 
   const loadData = async () => {
     setLoading(true);
-    const user = await base44.auth.me();
-    const addresses = await base44.entities.SentinelAddress.filter({ user_email: user.email }, '-created_date', 1);
-    if (addresses.length > 0) {
-      const addr = addresses[0];
-      setAddress(addr);
-      const lms = await base44.entities.LandmarkDescription.filter({ h3_index: addr.h3_index });
-      setLandmarks(lms);
+    try {
+      const user = await base44.auth.me();
+      if (!user) { setLoading(false); return; }
+      const addresses = await base44.entities.SentinelAddress.filter({ user_email: user.email }, '-created_date', 1);
+      if (addresses.length > 0) {
+        const addr = addresses[0];
+        setAddress(addr);
+        const lms = await base44.entities.LandmarkDescription.filter({ h3_index: addr.h3_index });
+        setLandmarks(lms);
+      }
+    } catch {
+      // auth failed or user not logged in — show empty state
     }
     setLoading(false);
   };
@@ -128,7 +133,7 @@ export default function Dashboard({ lang = 'en' }) {
 
   const applyCheckin = async (addr, lat, lng, checkinTime = new Date()) => {
     const inside = isInsideHex(lat, lng, addr.h3_index);
-    if (!inside) throw new Error('Outside hexagon');
+    if (!inside) throw new Error('Outside location zone');
 
     const newNights = (addr.persistence_nights || 0) + 1;
     let newWeeklyPings = addr.weekly_pings || 0;
@@ -197,7 +202,7 @@ export default function Dashboard({ lang = 'en' }) {
           await loadData();
           setCheckinMessage('✓ Check-in confirmed. Keep returning to build your tier.');
         } catch {
-          setCheckinMessage('⚠ You are outside your registered hexagon. Move closer and try again.');
+          setCheckinMessage('⚠ You are outside your registered location zone. Move closer and try again.');
         }
         setCheckingIn(false);
       },
@@ -218,10 +223,24 @@ export default function Dashboard({ lang = 'en' }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#060B13' }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-green-500/30 border-t-green-500 rounded-full animate-spin" />
-          <p className="text-slate-500 text-sm">Loading your Sentinel Address...</p>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#060B13' }}>
+        <HexBackground opacity={0.08} />
+        <div className="relative z-10 text-center max-w-sm">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(74,222,128,0.15)]">
+            <Shield className="w-8 h-8 text-green-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">Start With "Get My ID"</h2>
+          <p className="text-slate-400 text-sm leading-relaxed mb-3">
+            Your dashboard becomes available after you generate your Sentinel ID.
+          </p>
+          <p className="text-slate-600 text-xs leading-relaxed mb-7">
+            It only takes about 2 minutes — open the app from home, let your GPS lock in, add a nearby landmark, and your verified address is created instantly.
+          </p>
+          <a href="/get-id"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold transition-all shadow-[0_0_25px_rgba(74,222,128,0.3)]">
+            <Navigation className="w-4 h-4" /> Get My Sentinel ID →
+          </a>
+          <p className="text-slate-700 text-xs mt-5">Already have one? Make sure you're signed in with the same account.</p>
         </div>
       </div>
     );
