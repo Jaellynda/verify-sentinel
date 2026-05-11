@@ -13,6 +13,7 @@ import VouchingSystem from '../components/VouchingSystem';
 import HexBackground from '../components/HexBackground';
 import NIRAVerification from '../components/NIRAVerification';
 import AddressManagement from '../components/AddressManagement';
+import AddressHistoryTrail from '../components/AddressHistoryTrail';
 
 const TIERS = {
   'Visitor': {
@@ -360,6 +361,17 @@ export default function Dashboard({ lang = 'en' }) {
             <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
               <p className="text-xl font-bold text-green-400 font-mono">{address.trust_score || 30}</p>
               <p className="text-xs text-slate-600 mt-0.5">{tr('dash_trust')}</p>
+              <div className="mt-1.5 flex items-center justify-center gap-1">
+                {(address.trust_score || 30) < 50 && (
+                  <span className="text-xs text-amber-500/70 leading-tight">↑ builds with check-ins</span>
+                )}
+                {(address.trust_score || 30) >= 50 && (address.trust_score || 30) < 80 && (
+                  <span className="text-xs text-blue-400/70 leading-tight">↑ add vouches to grow</span>
+                )}
+                {(address.trust_score || 30) >= 80 && (
+                  <span className="text-xs text-emerald-400/70 leading-tight">✓ KYC-grade</span>
+                )}
+              </div>
             </div>
             <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
               <p className="text-xl font-bold text-emerald-400 font-mono">{nights}</p>
@@ -463,6 +475,15 @@ export default function Dashboard({ lang = 'en' }) {
             addressId={address.id}
             userEmail={address.user_email}
             onVerified={loadData}
+          />
+        </div>
+
+        {/* Address History Trail */}
+        <div className="p-6 rounded-3xl border border-slate-800/60"
+          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
+          <AddressHistoryTrail
+            userEmail={address.user_email}
+            currentScore={address.trust_score || 30}
           />
         </div>
 
