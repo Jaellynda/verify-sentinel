@@ -1,0 +1,177 @@
+import { useState } from 'react';
+import { Pencil, Trash2, X, Save, ChevronDown } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+
+const LANDMARK_ICONS = {
+  'Kiosk': '🏪', 'Petrol Station': '⛽', 'School': '🏫',
+  'Church/Mosque': '🕌', 'Borehole': '💧', 'Market': '🛒',
+  'Clinic/Hospital': '🏥', 'Bar/Restaurant': '🍺',
+  'Road Junction': '🛤️', 'Tree/Natural': '🌳', 'Other': '📍',
+};
+
+const LANDMARK_TYPES = Object.keys(LANDMARK_ICONS);
+const DIRECTIONS = ['North', 'South', 'East', 'West', 'Behind', 'In Front', 'Left', 'Right', 'Opposite'];
+
+function LandmarkEditForm({ lm, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    landmark_type: lm.landmark_type,
+    direction: lm.direction,
+    distance_meters: lm.distance_meters || '',
+    description_text: lm.description_text || '',
+    is_primary: lm.is_primary || false,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await base44.entities.LandmarkDescription.update(lm.id, {
+      landmark_type: form.landmark_type,
+      direction: form.direction,
+      distance_meters: form.distance_meters ? parseFloat(form.distance_meters) : null,
+      description_text: form.description_text,
+      is_primary: form.is_primary,
+    });
+    setSaving(false);
+    onSave();
+  };
+
+  return (
+    <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Type</label>
+          <select
+            value={form.landmark_type}
+            onChange={e => setForm(f => ({ ...f, landmark_type: e.target.value }))}
+            className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none"
+          >
+            {LANDMARK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 mb-1 block">Direction</label>
+          <select
+            value={form.direction}
+            onChange={e => setForm(f => ({ ...f, direction: e.target.value }))}
+            className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none"
+          >
+            {DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Distance (meters)</label>
+        <input
+          type="number"
+          value={form.distance_meters}
+          onChange={e => setForm(f => ({ ...f, distance_meters: e.target.value }))}
+          placeholder="e.g. 50"
+          className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 mb-1 block">Description</label>
+        <textarea
+          value={form.description_text}
+          onChange={e => setForm(f => ({ ...f, description_text: e.target.value }))}
+          rows={2}
+          className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none resize-none"
+        />
+      </div>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={form.is_primary}
+          onChange={e => setForm(f => ({ ...f, is_primary: e.target.checked }))}
+          className="accent-emerald-400"
+        />
+        <span className="text-xs text-slate-400">Mark as Primary Landmark</span>
+      </label>
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold transition-all"
+        >
+          <Save className="w-3 h-3" /> {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium transition-all"
+        >
+          <X className="w-3 h-3" /> Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function PhysicalAnchors({ landmarks, onChanged }) {
+  const [editingId, setEditingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDelete = async (id) => {
+    setDeletingId(id);
+    await base44.entities.LandmarkDescription.delete(id);
+    setDeletingId(null);
+    onChanged();
+  };
+
+  return (
+    <div className="p-6 rounded-3xl border border-slate-800/60"
+      style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
+      <h3 className="text-sm font-semibold text-white mb-4">Physical Anchors</h3>
+      <div className="space-y-3">
+        {landmarks.map((lm) => (
+          <div key={lm.id}>
+            {editingId === lm.id ? (
+              <LandmarkEditForm
+                lm={lm}
+                onSave={() => { setEditingId(null); onChanged(); }}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
+                <div className="w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-lg flex-shrink-0">
+                  {LANDMARK_ICONS[lm.landmark_type] || '📍'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-bold text-green-400 uppercase">{lm.landmark_type}</span>
+                    <span className="text-xs text-slate-600">·</span>
+                    <span className="text-xs text-slate-500">{lm.direction}</span>
+                    {lm.is_primary && (
+                      <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">Primary</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-300 truncate">{lm.ai_normalized || lm.description_text}</p>
+                  {lm.distance_meters && <p className="text-xs text-slate-600 mt-0.5">~{lm.distance_meters}m</p>}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setEditingId(lm.id)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                    title="Edit"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(lm.id)}
+                    disabled={deletingId === lm.id}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                    title="Delete"
+                  >
+                    {deletingId === lm.id
+                      ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
+                      : <Trash2 className="w-3.5 h-3.5" />
+                    }
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

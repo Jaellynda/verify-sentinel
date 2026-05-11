@@ -15,6 +15,7 @@ import NIRAVerification from '../components/NIRAVerification';
 import AddressManagement from '../components/AddressManagement';
 import AddressHistoryTrail from '../components/AddressHistoryTrail';
 import TrustBadge from '../components/TrustBadge';
+import PhysicalAnchors from '../components/PhysicalAnchors';
 
 const TIERS = {
   'Visitor': {
@@ -65,12 +66,7 @@ function TimeLockCountdown({ lastCheckin }) {
   );
 }
 
-const LANDMARK_ICONS = {
-  'Kiosk': '🏪', 'Petrol Station': '⛽', 'School': '🏫',
-  'Church/Mosque': '🕌', 'Borehole': '💧', 'Market': '🛒',
-  'Clinic/Hospital': '🏥', 'Bar/Restaurant': '🍺',
-  'Road Junction': '🛤️', 'Tree/Natural': '🌳', 'Other': '📍',
-};
+
 
 export default function Dashboard({ lang = 'en' }) {
   const tr = (key) => translate(lang, key);
@@ -507,29 +503,7 @@ export default function Dashboard({ lang = 'en' }) {
 
         {/* Physical Anchors */}
         {landmarks.length > 0 && (
-          <div className="p-6 rounded-3xl border border-slate-800/60"
-            style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
-            <h3 className="text-sm font-semibold text-white mb-4">{tr('dash_anchors')}</h3>
-            <div className="space-y-3">
-              {landmarks.map((lm) => (
-                <div key={lm.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
-                  <div className="w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-lg flex-shrink-0">
-                    {LANDMARK_ICONS[lm.landmark_type] || '📍'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-bold text-green-400 uppercase">{lm.landmark_type}</span>
-                      <span className="text-xs text-slate-600">·</span>
-                      <span className="text-xs text-slate-500">{lm.direction}</span>
-                      {lm.is_primary && <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">Primary</span>}
-                    </div>
-                    <p className="text-sm text-slate-300 truncate">{lm.ai_normalized || lm.description_text}</p>
-                    {lm.distance_meters && <p className="text-xs text-slate-600 mt-0.5">~{lm.distance_meters}m</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PhysicalAnchors landmarks={landmarks} onChanged={loadData} />
         )}
 
         {/* Deep Links */}
