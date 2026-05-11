@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Copy, CheckCircle, AlertCircle, Navigation, MapPin, Target, Crosshair } from 'lucide-react';
-import { MapContainer, TileLayer, Polygon, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, CircleMarker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { base44 } from '@/api/base44Client';
@@ -85,6 +85,25 @@ function HexPolygon({ h3Index, phase }) {
   );
 }
 
+/** Blue dot — live GPS position indicator */
+function BlueDot({ position }) {
+  if (!position) return null;
+  return (
+    <>
+      <CircleMarker
+        center={position}
+        radius={18}
+        pathOptions={{ color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.12, weight: 0 }}
+      />
+      <CircleMarker
+        center={position}
+        radius={9}
+        pathOptions={{ color: '#ffffff', fillColor: '#3B82F6', fillOpacity: 1, weight: 2.5 }}
+      />
+    </>
+  );
+}
+
 /** HexLock animation — collapses from Res-7 to Res-9 */
 function HexLockAnimation({ phase }) {
   const rings = [
@@ -140,6 +159,18 @@ export default function GetMyID({ lang = 'en' }) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [blueDotPosition, setBlueDotPosition] = useState(null);
+
+  // Live blue dot GPS watch
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => setBlueDotPosition([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 3000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
   // Derived: can the user save?
   const canSave = phase === 'locked' && accuracy !== null && accuracy <= 10
@@ -168,7 +199,7 @@ export default function GetMyID({ lang = 'en' }) {
 
         // Pan map to location
         if (mapRef.current) {
-          mapRef.current.setView([latitude, longitude], res === 7 ? 13 : res === 8 ? 15 : 17);
+          mapRef.current.setView([latitude, longitude], res === 7 ? 14 : res === 8 ? 16 : 18);
         }
 
         if (res === 9) {
@@ -193,7 +224,7 @@ export default function GetMyID({ lang = 'en' }) {
         setPhase(p);
 
         if (mapRef.current) {
-          mapRef.current.setView([latitude, longitude], res === 9 ? 17 : res === 8 ? 15 : 13);
+          mapRef.current.setView([latitude, longitude], res === 9 ? 18 : res === 8 ? 16 : 14);
         }
 
         if (p === 'locked') {
@@ -331,15 +362,15 @@ export default function GetMyID({ lang = 'en' }) {
             {showMap && (
               <div className="relative" style={{ height: 240 }}>
                 <MapContainer
-                  center={coords ? [coords.latitude, coords.longitude] : [-1.286389, 36.817223]}
-                  zoom={13}
+                  center={coords ? [coords.latitude, coords.longitude] : [0.3476, 32.5825]}
+                  zoom={16}
                   style={{ height: '100%', width: '100%', background: '#060B13' }}
                   ref={mapRef}
                   zoomControl={false}
                   attributionControl={false}
                 >
                   <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution=""
                     maxZoom={19}
                   />
@@ -348,6 +379,7 @@ export default function GetMyID({ lang = 'en' }) {
                   {manualPin && (
                     <Marker position={[manualPin.lat, manualPin.lng]} />
                   )}
+                  <BlueDot position={blueDotPosition} />
                 </MapContainer>
 
                 {/* Map overlay hint */}
