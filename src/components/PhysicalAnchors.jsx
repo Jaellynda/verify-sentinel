@@ -109,9 +109,11 @@ function LandmarkEditForm({ lm, onSave, onCancel }) {
 export default function PhysicalAnchors({ landmarks, onChanged }) {
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const handleDelete = async (id) => {
     setDeletingId(id);
+    setConfirmDeleteId(null);
     await base44.entities.LandmarkDescription.delete(id);
     setDeletingId(null);
     onChanged();
@@ -148,24 +150,42 @@ export default function PhysicalAnchors({ landmarks, onChanged }) {
                   {lm.distance_meters && <p className="text-xs text-slate-600 mt-0.5">~{lm.distance_meters}m</p>}
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => setEditingId(lm.id)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                    title="Edit"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(lm.id)}
-                    disabled={deletingId === lm.id}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                    title="Delete"
-                  >
-                    {deletingId === lm.id
-                      ? <div className="w-3.5 h-3.5 border border-red-400/40 border-t-red-400 rounded-full animate-spin" />
-                      : <Trash2 className="w-3.5 h-3.5" />
-                    }
-                  </button>
+                  {confirmDeleteId === lm.id ? (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30">
+                      <span className="text-xs text-red-400">Delete?</span>
+                      <button
+                        onClick={() => handleDelete(lm.id)}
+                        disabled={deletingId === lm.id}
+                        className="text-xs text-red-400 font-semibold hover:text-red-300 transition-colors"
+                      >
+                        {deletingId === lm.id ? '…' : 'Yes'}
+                      </button>
+                      <span className="text-slate-600 text-xs">·</span>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setEditingId(lm.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                        title="Edit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(lm.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
