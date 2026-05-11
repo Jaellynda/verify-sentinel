@@ -106,8 +106,8 @@ export default function Dashboard({ lang = 'en' }) {
     };
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
@@ -121,7 +121,7 @@ export default function Dashboard({ lang = 'en' }) {
     } catch {
       // auth failed or user not logged in — show empty state
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const processQueuedCheckin = useCallback(async ({ addressId, lat, lng, timestamp }) => {
@@ -528,7 +528,7 @@ export default function Dashboard({ lang = 'en' }) {
 
         {/* Physical Anchors */}
         {landmarks.length > 0 && (
-          <PhysicalAnchors landmarks={landmarks} onChanged={loadData} />
+          <PhysicalAnchors landmarks={landmarks} onChanged={() => loadData(true)} />
         )}
 
         {/* Deep Links */}
