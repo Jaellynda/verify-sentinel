@@ -29,8 +29,8 @@ export default function Landing({ lang = 'en' }) {
   }, []);
 
   const features = [
-    { icon: '⬡', title: 'H3 Hexagonal Precision', desc: 'Res-9 hexagons (~174m²) provide stable IDs that don\'t change when you move 10 steps.' },
-    { icon: '📡', title: '100% Offline Generation', desc: 'Sentinel ID computed on-device from satellite GPS using compiled icosahedron geometry. Zero data needed.' },
+    { icon: '📍', title: 'Precision Location Identity', desc: 'Stable location zones that don\'t change when you move a few steps — your address stays yours.' },
+    { icon: '📡', title: '100% Offline Generation', desc: 'Sentinel ID computed entirely on-device from your GPS signal. Zero data or internet needed.' },
     { icon: '🔒', title: 'Anti-Fraud Persistence', desc: '3-consecutive-night detection algorithm prevents fake address claims. Trust score builds over time.' },
     { icon: '🌍', title: 'East African First', desc: 'Built for Uganda, Kenya, Rwanda, DRC — with open architecture for all East & Central African nations. Supports English, Luganda, Swahili, and French.' },
     { icon: '🚚', title: 'Last-Mile Delivery', desc: 'Deep links to Google Maps & Apple Maps from any Sentinel ID. Delivery drivers arrive first time.' },
@@ -38,10 +38,10 @@ export default function Landing({ lang = 'en' }) {
   ];
 
   const stats = [
-    { value: '122', label: 'Global Base Cells' },
-    { value: 'Res-9', label: 'Sentinel Resolution' },
-    { value: '174m²', label: 'Hex Area Average' },
-    { value: '4.7B+', label: 'Unique Hexagons (Res-9)' },
+    { value: '100%', label: 'Offline Capable' },
+    { value: '<2min', label: 'ID Generation Time' },
+    { value: '4+', label: 'Countries Supported' },
+    { value: 'KYC', label: 'Bank-Grade Trust Score' },
   ];
 
   return (
@@ -165,7 +165,7 @@ export default function Landing({ lang = 'en' }) {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-green-400 mb-3">The Technology</h2>
-            <p className="text-slate-500 max-w-xl mx-auto">Built on Uber's H3 hexagonal indexing. Every hexagon is a mathematical fact — immutable, hierarchical, offline-computable.</p>
+            <p className="text-slate-500 max-w-xl mx-auto">Precision spatial identity, computed entirely on-device. Immutable, verifiable, and works without internet.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map((f, i) => (
@@ -180,49 +180,49 @@ export default function Landing({ lang = 'en' }) {
         </div>
       </section>
 
-      {/* H3 Math Section */}
+      {/* How It Works Section */}
       <section className="relative z-10 px-4 py-20 border-t border-zinc-800">
         <div className="max-w-4xl mx-auto">
           <div className="p-8 rounded-3xl border border-zinc-800"
           style={{ background: '#18181b' }}>
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                <span className="text-green-400 font-mono font-bold">H3</span>
+                <Shield className="w-5 h-5 text-green-400" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white">How H3 Works — Without Internet</h2>
-                <p className="text-slate-500 text-sm mt-0.5">Complex Math, Simplified for Africa.</p>
+                <h2 className="text-2xl font-bold text-white">How Your Sentinel ID is Generated — Without Internet</h2>
+                <p className="text-slate-500 text-sm mt-0.5">Precision addressing, simplified for Africa.</p>
               </div>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               {[
                 {
                   step: '01',
-                  title: 'Icosahedron Projection',
-                  metaphor: '⚽ The Soccer Ball Method',
-                  desc: 'We treat the Earth like a giant soccer ball made of 20 flat triangles. We instantly figure out which "patch" of the ball you are standing on.',
-                  insight: 'No matter where you are on Earth, the math never gets "blurry" or off-center.',
+                  title: 'GPS Signal Capture',
+                  metaphor: '📡 Satellite Lock',
+                  desc: 'Your phone\'s GPS connects to satellites orbiting overhead. We wait for a high-accuracy fix — the stronger the signal, the more precise your address.',
+                  insight: 'No matter where you are on Earth, this works the same way — completely offline.',
                 },
                 {
                   step: '02',
-                  title: 'IJK Axial Snapping',
-                  metaphor: '🧲 The Digital Magnet',
-                  desc: 'Think of the ground as a giant invisible honeycomb. Our system acts like a magnet that "snaps" your messy GPS signal to the center of the nearest honeycomb cell.',
-                  insight: 'This stops your location from "jumping" around. Even if your GPS is shaky, you stay in your house.',
+                  title: 'Location Stabilisation',
+                  metaphor: '🧲 Anti-Drift Lock',
+                  desc: 'Raw GPS can jump 20–50 metres. Our system locks your position to a stable zone so your ID doesn\'t change if you walk a few steps.',
+                  insight: 'Even with a shaky GPS signal, your address stays fixed at your home — not your neighbour\'s.',
                 },
                 {
                   step: '03',
-                  title: 'Aperture-7 Subdivision',
-                  metaphor: '🔍 The Zoom Lens',
-                  desc: 'We start with big zones and zoom in exactly 7 times until we reach the size of a standard Ugandan plot. It\'s like a magnifying glass for your address.',
-                  insight: 'This ensures every single house in Uganda gets its own unique space that doesn\'t overlap with the neighbor.',
+                  title: 'Zone Precision',
+                  metaphor: '🔍 Plot-Level Accuracy',
+                  desc: 'We zoom into the exact size of a standard residential plot. Every house gets its own unique space that doesn\'t overlap with anyone else.',
+                  insight: 'This ensures every single home in Uganda gets a unique, non-overlapping identity.',
                 },
                 {
                   step: '04',
-                  title: '64-bit Index Encoding',
-                  metaphor: '🗝️ The Master Key',
-                  desc: 'We take all that geography and turn it into a short, 15-character "Master Key." This key is computed entirely inside your phone\'s memory.',
-                  insight: 'This is the "Offline" magic. Your phone doesn\'t need to ask a server for your ID — it calculates it instantly without using a single kilobyte of data.',
+                  title: 'ID Encoding',
+                  metaphor: '🗝️ Your Unique Code',
+                  desc: 'We convert your precise location into a short, readable Sentinel ID — computed entirely inside your phone\'s memory.',
+                  insight: 'Your phone doesn\'t ask a server — it calculates your ID instantly, using zero data.',
                 },
               ].map(item => (
                 <div key={item.step} className="flex gap-4">
@@ -251,7 +251,7 @@ export default function Landing({ lang = 'en' }) {
               🏚️ The Problem We Solve
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">When There Is No Street Name</h2>
-            <p className="text-slate-500 max-w-xl mx-auto">Over 1 billion people live in areas with no formal address. H3 hexagons give every kiosk, shack, and borehole a permanent, verifiable identity.</p>
+            <p className="text-slate-500 max-w-xl mx-auto">Over 1 billion people live in areas with no formal address. Sentinel IDs give every kiosk, shack, and borehole a permanent, verifiable identity.</p>
           </div>
 
           {/* Challenge cards */}
@@ -261,7 +261,7 @@ export default function Landing({ lang = 'en' }) {
                 icon: '🏚️',
                 title: 'Kiosks & Shacks',
                 problem: 'No house number. No street name. No postal code.',
-                solution: 'The H3 hex is the address. A ~174m² cell uniquely identifies your structure regardless of what surrounds it.',
+                solution: 'Your Sentinel ID is the address. A precise location zone uniquely identifies your structure regardless of what surrounds it.',
                 color: 'border-amber-500/20',
               },
               {
@@ -275,7 +275,7 @@ export default function Landing({ lang = 'en' }) {
                 icon: '📍',
                 title: 'GPS Drift & Jitter',
                 problem: 'A standard pin can jump 20–50m, placing deliveries at the wrong compound.',
-                solution: 'H3\'s "Digital Magnet" snaps your position to the hex center — GPS jitter cannot move you to a neighbour\'s cell.',
+                solution: 'Our anti-drift system locks your position to a stable zone — GPS jitter cannot move you to a neighbour\'s address.',
                 color: 'border-green-500/20',
               },
             ].map((c, i) => (
@@ -321,15 +321,15 @@ export default function Landing({ lang = 'en' }) {
               {/* Sentinel column */}
               <div className="p-5 rounded-2xl border border-green-900/40 bg-green-950/20">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-base">⬡</div>
-                  <span className="text-green-400 font-semibold text-sm">Sentinel ID (H3 Res-9)</span>
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-base">🛡️</div>
+                  <span className="text-green-400 font-semibold text-sm">Sentinel ID</span>
                 </div>
                 <ul className="space-y-2.5">
                   {[
-                    'Stable hex cell — GPS drift cannot change your ID',
+                    'Stable location zone — GPS drift cannot change your ID',
                     '3-night check-in proves habitation, not just presence',
                     'Landmark anchors guide drivers to the exact compound',
-                    'Anti-fraud: hex boundary enforcement + time lock',
+                    'Anti-fraud: location boundary enforcement + time lock',
                     'Trust score = verifiable signal for KYC & credit',
                     'Immutable address history trail when you move',
                   ].map((item, i) => (
@@ -356,7 +356,7 @@ export default function Landing({ lang = 'en' }) {
               </div>
             </div>
             <p className="text-zinc-400 leading-relaxed mb-4">
-              Sentinel IDs are <span className="text-green-400 font-semibold">cross-border compatible</span>, unlocking <span className="text-white font-bold">$100B in regional trade potential</span> between Mombasa, Kampala, and Goma. A driver in Mombasa can navigate to a Sentinel address in Goma with zero data — the hexagon math is universal.
+              Sentinel IDs are <span className="text-green-400 font-semibold">cross-border compatible</span>, unlocking <span className="text-white font-bold">$100B in regional trade potential</span> between Mombasa, Kampala, and Goma. A driver in Mombasa can navigate to a Sentinel address in Goma with zero data — the location system is universal.
             </p>
             <div className="flex flex-wrap gap-3">
               {['🇰🇪 Mombasa Port', '🇺🇬 Kampala Hub', '🇨🇩 Goma Gateway', '🇷🇼 Kigali Corridor'].map(c => (
@@ -386,8 +386,8 @@ export default function Landing({ lang = 'en' }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-2xl border border-zinc-800"
             style={{ background: '#18181b' }}>
             {[
-              { label: 'Current Hex Resolution', value: '9' },
-              { label: 'Global Base Cells', value: '122' },
+              { label: 'ID Generation', value: 'Offline' },
+              { label: 'Countries Supported', value: '4+' },
               { label: 'EA Regional Satellites', value: 'Active ●' },
             ].map(item => (
               <div key={item.label}>
@@ -397,7 +397,7 @@ export default function Landing({ lang = 'en' }) {
             ))}
           </div>
           <div className="mt-6 text-center text-xs text-slate-700">
-            © 2025 Verify Sentinel · Digital Identity Layer for East Africa · H3 Hexagonal Indexing
+            © 2025 Verify Sentinel · Digital Identity Layer for East Africa
           </div>
         </div>
       </footer>
