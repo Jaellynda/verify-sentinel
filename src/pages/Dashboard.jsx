@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Shield, MapPin, Copy, CheckCircle, Clock, ExternalLink, RefreshCw, Navigation, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { isInsideHex, calculateTrustScore, formatCoordinates } from '../lib/h3core';
@@ -71,6 +71,7 @@ function TimeLockCountdown({ lastCheckin }) {
 export default function Dashboard({ lang = 'en' }) {
   const tr = (key) => translate(lang, key);
   const [address, setAddress] = useState(null);
+  const addressRef = useRef(null);
   const [landmarks, setLandmarks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -107,13 +108,15 @@ export default function Dashboard({ lang = 'en' }) {
   }, []);
 
   const loadData = async (silent = false) => {
-    if (!silent) setLoading(true);
+    // Only show the loading screen on the very first load (when we have no address yet)
+    if (!silent && !addressRef.current) setLoading(true);
     try {
       const user = await base44.auth.me();
       if (!user) { setLoading(false); return; }
       const addresses = await base44.entities.SentinelAddress.filter({ user_email: user.email }, '-created_date', 1);
       if (addresses.length > 0) {
         const addr = addresses[0];
+        addressRef.current = addr;
         setAddress(addr);
         const lms = await base44.entities.LandmarkDescription.filter({ h3_index: addr.h3_index });
         setLandmarks(lms);
@@ -121,7 +124,7 @@ export default function Dashboard({ lang = 'en' }) {
     } catch {
       // auth failed or user not logged in — show empty state
     }
-    if (!silent) setLoading(false);
+    setLoading(false);
   };
 
   const processQueuedCheckin = useCallback(async ({ addressId, lat, lng, timestamp }) => {
@@ -223,24 +226,13 @@ export default function Dashboard({ lang = 'en' }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#060B13' }}>
-        <HexBackground opacity={0.08} />
-        <div className="relative z-10 text-center max-w-sm">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(74,222,128,0.15)]">
-            <Shield className="w-8 h-8 text-green-400" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#060B13' }}>
+        <HexBackground opacity={0.06} />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+            <Shield className="w-6 h-6 text-green-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-3">Start With "Get My ID"</h2>
-          <p className="text-slate-400 text-sm leading-relaxed mb-3">
-            Your dashboard becomes available after you generate your Sentinel ID.
-          </p>
-          <p className="text-slate-600 text-xs leading-relaxed mb-7">
-            It only takes about 2 minutes — open the app from home, let your GPS lock in, add a nearby landmark, and your verified address is created instantly.
-          </p>
-          <a href="/get-id"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold transition-all shadow-[0_0_25px_rgba(74,222,128,0.3)]">
-            <Navigation className="w-4 h-4" /> Get My Sentinel ID →
-          </a>
-          <p className="text-slate-700 text-xs mt-5">Already have one? Make sure you're signed in with the same account.</p>
+          <div className="w-6 h-6 border-2 border-green-500/30 border-t-green-500 rounded-full animate-spin" />
         </div>
       </div>
     );
