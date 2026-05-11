@@ -10,7 +10,7 @@ const STEPS = [
     time: '2 min',
     status: 'Free & Instant',
     statusColor: 'text-green-400 bg-green-500/10 border-green-500/20',
-    desc: 'Your phone\'s GPS locks onto a Res-9 H3 hexagon (~174m²) — completely offline. No data needed.',
+    desc: 'Our technology locks your GPS to a precise, stable location zone — completely offline. No data needed.',
     items: [
       { ready: true,  label: 'A smartphone with GPS' },
       { ready: true,  label: 'Stand inside or near your home' },
@@ -25,10 +25,10 @@ const STEPS = [
     time: '3 days',
     status: 'Required for Resident',
     statusColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    desc: 'Check in from your hex on 3 separate days to prove you actually sleep there — not just visiting.',
+    desc: 'Check in from your registered location on 3 separate days to prove you actually sleep there — not just visiting.',
     items: [
       { ready: true,  label: 'Open the app each day from home' },
-      { ready: true,  label: 'GPS must confirm you\'re inside your hexagon' },
+      { ready: true,  label: 'GPS must confirm you\'re at your registered location' },
       { ready: false, label: 'Works offline — syncs when reconnected' },
     ],
     result: 'Trust Score reaches 65. Status: Resident.',

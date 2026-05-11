@@ -10,11 +10,11 @@ const FAQS = [
     items: [
       {
         q: 'What happens to my Sentinel ID if I move to a new location?',
-        a: 'Your existing Sentinel ID remains permanently linked to your original hexagon — it is never deleted or overwritten. When you move, you generate a new Sentinel ID for your new location by visiting "Get My ID" and completing the 3-night check-in process from there. This creates a new address record while your old one is preserved as historical data, giving banks and couriers a verifiable address timeline.',
+        a: 'Your existing Sentinel ID remains permanently linked to your original registered location — it is never deleted or overwritten. When you move, visit "Get My ID" and complete the process from your new home. This creates a new address record while your old one is preserved as historical data, giving banks and couriers a verifiable address timeline.',
       },
       {
         q: 'Will I lose my trust score and vouch history when I move?',
-        a: 'Your trust score and vouch history are tied to each specific address record, not to your account globally. This is by design: a bank cares that you have 90 days of persistence at your current address, not a previous one. Your old address record retains its full score and history as an audit trail, while your new address starts fresh and builds its own trust score. This prevents people from fraudulently transferring "earned trust" from a different location.',
+        a: 'Your trust score and vouch history are tied to each specific address record. Your old address record retains its full score and history as an audit trail, while your new address starts fresh and builds its own trust score. This prevents people from fraudulently transferring "earned trust" from a different location.',
       },
       {
         q: 'How do I tell my bank or courier about my new Sentinel ID?',
@@ -26,7 +26,7 @@ const FAQS = [
       },
       {
         q: 'Can I have more than one active Sentinel ID at the same time?',
-        a: 'Yes — this is valid for people with two residences (e.g., rural family home + urban rental). Each address builds its own trust score independently. However, businesses and banks can query all addresses linked to your account email, so attempting to inflate trust by maintaining a fraudulent secondary address is detectable. Legitimate multi-address use cases (seasonal workers, students, etc.) are fully supported.',
+        a: 'Yes — this is valid for people with two residences (e.g., rural family home + urban rental). Each address builds its own trust score independently. However, businesses and banks can query all addresses linked to your account, so attempting to inflate trust by maintaining a fraudulent secondary address is detectable. Legitimate multi-address use cases (seasonal workers, students, etc.) are fully supported.',
       },
     ],
   },
@@ -35,20 +35,20 @@ const FAQS = [
     icon: '📡',
     items: [
       {
-        q: 'Why does the GPS take so long to get my location?',
-        a: 'The system uses a two-pass strategy. A low-accuracy fix (~200m) renders your Ghost Hexagon within 1–2 seconds. A high-accuracy watch then refines it to Res-9 (~10m) in the background. Indoor usage or cloudy skies can slow the second pass — use the Manual Map Override by tapping your roof on the map to skip the wait.',
+        q: 'Why does the GPS take some time to get my location?',
+        a: 'Our technology uses a two-stage process. It first gets a quick approximate fix within 1–2 seconds to show your general area, then quietly refines it to precise accuracy in the background. Indoor usage or cloudy skies can slow the second stage — simply tap your location on the map to place it manually and skip the wait.',
       },
       {
-        q: 'Why is my accuracy showing ±150m even though I\'m outside?',
+        q: 'Why is my accuracy still low even though I\'m outside?',
         a: 'GPS satellites take time to triangulate. Move to an open area away from tall buildings, wait 15–30 seconds, and the accuracy will improve. Ensure Location Services are set to "Always On" or "While Using App" in your device settings.',
       },
       {
         q: 'What is the Manual Map Override?',
-        a: 'If GPS accuracy does not reach 10m within a reasonable time, you can tap your exact position on the dark map shown during ID generation. This places your pin at Res-9 precision immediately, enabling the Save button without waiting for satellite convergence.',
+        a: 'If GPS accuracy does not reach the required precision within a reasonable time, you can tap your exact position on the map shown during ID generation. This places your location precisely and enables the Save button immediately without waiting.',
       },
       {
         q: 'Will my Sentinel ID change if I move a few steps?',
-        a: 'No. H3 Res-9 hexagons are ~174m² each. Moving a few steps within your compound will not change your H3 index. The "Digital Magnet" (IJK Axial Snapping) locks you to the nearest hex center, making your ID stable even with GPS jitter.',
+        a: 'No. Our technology assigns you a stable location zone — moving a few steps within your compound will not change your ID. The system is designed to stay locked to your address even when your phone\'s GPS signal fluctuates slightly.',
       },
     ],
   },
@@ -58,15 +58,15 @@ const FAQS = [
     items: [
       {
         q: 'What is the difference between Visitor, Resident, and Sentinel Permanent?',
-        a: 'Visitor is instant — anyone who generates an ID starts here. Resident requires 3 check-ins from your hex over 3 separate days (proving you sleep there). Sentinel Permanent requires 4 weekly pings spread across at least 4 weeks — proving long-term continuous residency. Each tier unlocks higher trust scores accepted by banks and couriers.',
+        a: 'Visitor is instant — anyone who generates an ID starts here. Resident requires 3 check-ins from your location over 3 separate days, proving you actually sleep there. Sentinel Permanent requires 4 weekly check-ins spread across at least 4 weeks — proving long-term continuous residency. Each tier unlocks higher trust scores accepted by banks and couriers.',
       },
       {
         q: 'Why can Guest addresses never reach Sentinel Permanent?',
-        a: 'The Airbnb Mitigation rule prevents short-term guests from fraudulently claiming permanent residency. If you selected "Guest" during setup and are actually an Owner or Tenant, contact support to correct your residency type.',
+        a: 'This rule prevents short-term guests from fraudulently claiming permanent residency. If you selected "Guest" during setup but are actually an Owner or Tenant, contact support to correct your residency type.',
       },
       {
         q: 'How does the 20-hour time lock work?',
-        a: 'To prevent fake check-ins (e.g., someone checking in many times from the same couch), the system enforces a minimum 20-hour gap between check-ins. The dashboard shows a live countdown. This ensures each check-in represents a genuine overnight stay.',
+        a: 'To prevent fake check-ins, the system enforces a minimum 20-hour gap between check-ins. The dashboard shows a live countdown. This ensures each check-in represents a genuine overnight stay.',
       },
       {
         q: 'How do neighbor vouches affect my trust score?',
@@ -80,15 +80,15 @@ const FAQS = [
     items: [
       {
         q: 'Can I generate my Sentinel ID without internet?',
-        a: 'Yes. The H3 hexagonal math is fully compiled into the app — no server call is ever made for ID generation. As long as your device can receive GPS satellite signals (which are free radio signals, not data), you can generate, view, and share your Sentinel ID with zero mobile data.',
+        a: 'Yes. Our technology computes your unique address ID entirely on your device — no internet connection is needed for ID generation. As long as your device can receive GPS signals, you can generate, view, and share your Sentinel ID with zero mobile data.',
       },
       {
         q: 'What happens if I check in while offline?',
-        a: 'The app detects you are offline and queues the check-in locally in your browser\'s storage (localStorage). Your GPS coordinates and timestamp are saved. The moment your device reconnects to the internet, the app automatically syncs the queued data to the database — you will see a "Synced" banner on the dashboard.',
+        a: 'The app detects you are offline and saves the check-in locally on your device. Your location and timestamp are recorded. The moment your device reconnects to the internet, the app automatically syncs the data — you will see a "Synced" confirmation on the dashboard.',
       },
       {
         q: 'What if I close the app before it syncs?',
-        a: 'The offline queue persists in localStorage even after closing the browser. The next time you open the app with connectivity, it will detect and sync the pending check-in automatically.',
+        a: 'The offline data persists even after closing the browser. The next time you open the app with connectivity, it will detect and sync the pending check-in automatically.',
       },
     ],
   },

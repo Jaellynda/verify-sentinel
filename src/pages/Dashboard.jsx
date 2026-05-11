@@ -232,15 +232,21 @@ export default function Dashboard({ lang = 'en' }) {
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#060B13' }}>
         <HexBackground opacity={0.08} />
         <div className="relative z-10 text-center max-w-sm">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-4">
-            <MapPin className="w-8 h-8 text-slate-600" />
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(74,222,128,0.15)]">
+            <Shield className="w-8 h-8 text-green-400" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">No Address Found</h2>
-          <p className="text-slate-500 text-sm mb-6">{tr('err_no_address')}</p>
+          <h2 className="text-2xl font-bold text-white mb-3">Start With "Get My ID"</h2>
+          <p className="text-slate-400 text-sm leading-relaxed mb-3">
+            Your dashboard becomes available after you generate your Sentinel ID.
+          </p>
+          <p className="text-slate-600 text-xs leading-relaxed mb-7">
+            It only takes about 2 minutes — open the app from home, let your GPS lock in, add a nearby landmark, and your verified address is created instantly.
+          </p>
           <a href="/get-id"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold transition-all">
-            <Navigation className="w-4 h-4" /> Generate My Sentinel ID
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold transition-all shadow-[0_0_25px_rgba(74,222,128,0.3)]">
+            <Navigation className="w-4 h-4" /> Get My Sentinel ID →
           </a>
+          <p className="text-slate-700 text-xs mt-5">Already have one? Make sure you're signed in with the same account.</p>
         </div>
       </div>
     );
