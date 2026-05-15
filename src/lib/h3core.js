@@ -38,8 +38,8 @@ import { latLngToCell, cellToLatLng, cellToBoundary, gridDisk, cellToParent } fr
 export const RESOLUTION = {
   DISTRICT: 6,   // ~36km² — District/Province level
   PARISH: 8,     // ~0.74km² — Parish/Cell level
-  SENTINEL: 9,   // ~174m² — Plot/Household "Sentinel ID"
-  PLOT: 10       // ~16m² — Sub-plot precision
+  SENTINEL: 10,  // ~65m across — Single compound precision (recommended)
+  PLOT: 11       // ~25m — Room-level precision
 };
 
 /**
@@ -138,7 +138,7 @@ export function calculateTrustScore(persistenceNights, vouchesCount) {
 
 /**
  * Verify if a device's current GPS position is within the claimed hexagon.
- * Uses H3's containment check by comparing H3 indices at resolution 9.
+ * Uses H3's containment check by comparing H3 indices at resolution 10.
  */
 export function isInsideHex(currentLat, currentLng, claimedH3Index) {
   const currentH3 = latLngToCell(currentLat, currentLng, RESOLUTION.SENTINEL);

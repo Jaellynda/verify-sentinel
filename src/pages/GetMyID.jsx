@@ -36,7 +36,7 @@ L.Icon.Default.mergeOptions({
 function getResolutionForAccuracy(accuracy) {
   if (accuracy > 200) return { res: 7, label: 'Ghost', phase: 'ghost' };
   if (accuracy > 50)  return { res: 8, label: 'Refining', phase: 'refining' };
-  return { res: 9, label: 'Locked', phase: 'locked' };
+  return { res: 10, label: 'Locked', phase: 'locked' };
 }
 
 const STATUS_STAGES = [
@@ -202,7 +202,7 @@ export default function GetMyID({ lang = 'en' }) {
           mapRef.current.setView([latitude, longitude], res === 7 ? 14 : res === 8 ? 16 : 18);
         }
 
-        if (res === 9) {
+        if (res === 10) {
           finalizeSentinel(latitude, longitude, h3);
         }
       },
@@ -224,7 +224,7 @@ export default function GetMyID({ lang = 'en' }) {
         setPhase(p);
 
         if (mapRef.current) {
-          mapRef.current.setView([latitude, longitude], res === 9 ? 18 : res === 8 ? 16 : 14);
+          mapRef.current.setView([latitude, longitude], res === 10 ? 18 : res === 8 ? 16 : 14);
         }
 
         if (p === 'locked') {
@@ -251,7 +251,7 @@ export default function GetMyID({ lang = 'en' }) {
     const h3 = latLngToCell(lat, lng, RESOLUTION.SENTINEL);
     setManualPin({ lat, lng });
     setCurrentH3(h3);
-    setCurrentRes(9);
+    setCurrentRes(10);
     setPhase('manual');
     setAccuracy(null);
     finalizeSentinel(lat, lng, h3);
@@ -318,7 +318,7 @@ export default function GetMyID({ lang = 'en' }) {
   const resBadge = {
     7: { bg: 'bg-slate-700/60', text: 'text-slate-400', label: 'Low Precision' },
     8: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Refining...' },
-    9: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Locked ✓' },
+    10: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'Locked ✓' },
   };
   const badge = resBadge[currentRes] || resBadge[7];
 
