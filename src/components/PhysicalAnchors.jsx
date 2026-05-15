@@ -32,7 +32,7 @@ function LandmarkEditForm({ lm, onSave, onCancel }) {
       is_primary: form.is_primary,
     });
     setSaving(false);
-    onSave();
+    onSave({ ...lm, ...form, distance_meters: form.distance_meters ? parseFloat(form.distance_meters) : null });
   };
 
   return (
@@ -106,10 +106,14 @@ function LandmarkEditForm({ lm, onSave, onCancel }) {
   );
 }
 
-export default function PhysicalAnchors({ landmarks, onChanged }) {
+export default function PhysicalAnchors({ landmarks: initialLandmarks, onChanged }) {
+  const [landmarks, setLandmarks] = useState(initialLandmarks);
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  // Keep in sync if parent reloads
+  useState(() => { setLandmarks(initialLandmarks); }, [initialLandmarks]);
 
   const handleDelete = async (id) => {
     setDeletingId(id);
@@ -119,7 +123,14 @@ export default function PhysicalAnchors({ landmarks, onChanged }) {
     } catch {
       // Already deleted or not found — treat as success
     }
+    setLandmarks(prev => prev.filter(l => l.id !== id));
     setDeletingId(null);
+    onChanged();
+  };
+
+  const handleSaved = (updatedLm) => {
+    setLandmarks(prev => prev.map(l => l.id === updatedLm.id ? updatedLm : l));
+    setEditingId(null);
     onChanged();
   };
 
@@ -133,7 +144,7 @@ export default function PhysicalAnchors({ landmarks, onChanged }) {
             {editingId === lm.id ? (
               <LandmarkEditForm
                 lm={lm}
-                onSave={() => { setEditingId(null); onChanged(); }}
+                onSave={handleSaved}
                 onCancel={() => setEditingId(null)}
               />
             ) : (
