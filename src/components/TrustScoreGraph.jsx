@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 import { TrendingUp } from 'lucide-react';
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -22,19 +22,21 @@ export default function TrustScoreGraph({ addressId, userEmail, currentScore }) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!addressId || !userEmail) return;
+    if (!addressId) return;
     (async () => {
       setLoading(true);
-      const records = await base44.entities.TrustScoreHistory.filter(
-        { sentinel_address_id: addressId },
-        'created_date', 20
-      );
-      // Synthetic seed if no history yet
-      if (records.length === 0) {
+      const { data: records, error } = await supabase
+        .from('trust_score_history')
+        .select('*')
+        .eq('sentinel_address_id', addressId)
+        .order('created_at', { ascending: true })
+        .limit(20);
+
+      if (error || !records || records.length === 0) {
         setHistory([{ label: 'Start', score: 30, event: 'initial' }]);
       } else {
-        const formatted = records.map((r, i) => ({
-          label: new Date(r.created_date).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
+        const formatted = records.map(r => ({
+          label: new Date(r.created_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
           score: r.score,
           event: r.event,
         }));
@@ -42,7 +44,7 @@ export default function TrustScoreGraph({ addressId, userEmail, currentScore }) 
       }
       setLoading(false);
     })();
-  }, [addressId, userEmail]);
+  }, [addressId]);
 
   if (loading) {
     return (
