@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, CheckCircle, Loader2, Heart } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import SentinelQRDisplay from './SentinelQRDisplay';
+import QRVouchScanner from './QRVouchScanner';
 
 export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCount, onVouchAdded }) {
   const [vouches, setVouches] = useState([]);
@@ -84,6 +86,19 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
         Each vouch from a neighbor adds <span className="text-green-400 font-semibold">+5 trust points</span> to their address (max 20pts from vouching).
         Vouch for a neighbor by entering their Sentinel ID.
       </p>
+
+      {/* My QR code for neighbors to scan */}
+      <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-slate-900/50 border border-slate-700/30 mb-4">
+        <SentinelQRDisplay sentinelId={sentinelId} size={120} />
+        <div>
+          <p className="text-xs font-semibold text-white mb-1">Your QR Code</p>
+          <p className="text-xs text-slate-500">Show this to a Resident-tier neighbor so they can scan and vouch for you instantly.</p>
+          <p className="text-xs font-mono text-slate-600 mt-2">{sentinelId}</p>
+        </div>
+      </div>
+
+      {/* QR Scanner for vouching neighbors */}
+      <QRVouchScanner onVouchComplete={onVouchAdded} />
 
       {/* Vouches received */}
       {loading ? (

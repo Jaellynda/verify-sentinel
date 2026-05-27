@@ -16,6 +16,7 @@ export default function Navbar({ lang, onLangChange }) {
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/help', label: 'Help' },
     { path: '/verification-guide', label: 'Verify Guide' },
+    { path: '/business', label: 'Business' },
   ];
 
   return (
