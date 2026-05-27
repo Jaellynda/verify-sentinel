@@ -105,7 +105,12 @@ export default function TrustBadge({ address, niraVerified = false }) {
 
   const handleShare = async () => {
     if (navigator.share) {
-      await navigator.share({ title: 'My Sentinel ID', text: shareText });
+      try {
+        await navigator.share({ title: 'My Sentinel ID', text: shareText });
+      } catch {
+        // Permission denied or cancelled — fall back to clipboard
+        handleCopyText();
+      }
     } else {
       handleCopyText();
     }
