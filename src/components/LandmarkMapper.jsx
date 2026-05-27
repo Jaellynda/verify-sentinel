@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, MapPin, CheckCircle, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 
 const LANDMARK_TYPES = [
   { key: 'Kiosk', icon: '🏪', label: 'Kiosk' },
@@ -17,10 +17,6 @@ const LANDMARK_TYPES = [
 
 const DIRECTIONS = ['North', 'South', 'East', 'West', 'Behind', 'In Front', 'Left', 'Right', 'Opposite'];
 
-/**
- * Directional Compass UI for selecting direction relative to landmark.
- * The 8 cardinal/intercardinal points + Opposite arranged in a circle.
- */
 function DirectionCompass({ selected, onSelect }) {
   const positions = [
     { dir: 'North', angle: 270 }, { dir: 'East', angle: 0 },
@@ -29,32 +25,26 @@ function DirectionCompass({ selected, onSelect }) {
     { dir: 'Right', angle: 45 }, { dir: 'Left', angle: 225 },
   ];
   const R = 52;
-
   return (
     <div className="relative w-32 h-32 mx-auto">
-      {/* Center */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
           <div className="w-2 h-2 rounded-full bg-blue-400" />
         </div>
       </div>
-      {/* Direction buttons */}
       {positions.map(({ dir, angle }) => {
         const rad = (angle * Math.PI) / 180;
         const x = 64 + R * Math.cos(rad) - 14;
         const y = 64 + R * Math.sin(rad) - 14;
         const isSelected = selected === dir;
         return (
-          <button
-            key={dir}
-            onClick={() => onSelect(dir)}
+          <button key={dir} onClick={() => onSelect(dir)}
             style={{ left: x, top: y, position: 'absolute' }}
             className={`w-7 h-7 rounded text-xs font-bold transition-all duration-200 ${
               isSelected
                 ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.6)]'
                 : 'bg-slate-800/80 text-slate-400 border border-slate-700/50 hover:border-blue-500/50 hover:text-blue-400'
-            }`}
-          >
+            }`}>
             {dir === 'In Front' ? '▲' : dir === 'Behind' ? '▼' : dir === 'Left' ? '◀' : dir === 'Right' ? '▶' : dir === 'Opposite' ? '⊕' : dir[0]}
           </button>
         );
@@ -65,7 +55,7 @@ function DirectionCompass({ selected, onSelect }) {
 
 export default function LandmarkMapper({ sentinelAddressId, h3Index, onComplete }) {
   const [landmarks, setLandmarks] = useState([]);
-  const [step, setStep] = useState('type'); // type | direction | describe | done
+  const [step, setStep] = useState('type');
   const [current, setCurrent] = useState({ type: '', direction: '', description: '', distance: '' });
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState('');
@@ -84,27 +74,53 @@ export default function LandmarkMapper({ sentinelAddressId, h3Index, onComplete 
     if (!current.description) return;
     setAiLoading(true);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a geospatial data normalizer for East African addresses. 
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 100,
+          messages: [{
+            role: 'user',
+            content: `You are a geospatial data normalizer for East African addresses.
 A user provided this landmark description: "${current.description}"
 Landmark type: ${current.type}, Direction: ${current.direction}, Distance: ~${current.distance || 'unknown'}m
 
 Normalize this into a standardized English phrase of max 15 words that a delivery driver can use.
 Format: "[Direction] of [landmark type description], approximately [distance]"
-Output ONLY the normalized phrase, nothing else.`,
+Output ONLY the normalized phrase, nothing else.`
+          }]
+        })
       });
-      setAiResult(result);
+      const data = await response.json();
+      setAiResult(data.content?.[0]?.text || current.description);
+    } catch (err) {
+      console.error('AI normalize failed:', err);
+      setAiResult(current.description);
     } finally {
       setAiLoading(false);
     }
   };
 
-  const handleAddLandmark = () => {
+  const handleAddLandmark = async () => {
     const newLandmark = {
-      ...current,
+      sentinel_address_id: sentinelAddressId,
+      h3_index: h3Index,
+      landmark_type: current.type,
+      direction: current.direction,
+      distance_meters: current.distance ? parseFloat(current.distance) : null,
+      description_text: current.description,
       ai_normalized: aiResult || current.description,
       is_primary: landmarks.length === 0,
     };
+
+    // Save to Supabase
+    const { error } = await supabase
+      .from('landmark_descriptions')
+      .insert(newLandmark);
+
+    if (error) console.error('Failed to save landmark:', error);
+
     setLandmarks(prev => [...prev, newLandmark]);
     setCurrent({ type: '', direction: '', description: '', distance: '' });
     setAiResult('');
@@ -117,7 +133,6 @@ Output ONLY the normalized phrase, nothing else.`,
 
   return (
     <div className="space-y-6">
-      {/* Added landmarks */}
       {landmarks.length > 0 && (
         <div className="space-y-2">
           {landmarks.map((lm, i) => (
@@ -127,14 +142,14 @@ Output ONLY the normalized phrase, nothing else.`,
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-blue-400 uppercase">{lm.type}</span>
+                  <span className="text-xs font-bold text-blue-400 uppercase">{lm.landmark_type}</span>
                   <span className="text-xs text-slate-500">·</span>
                   <span className="text-xs text-slate-400">{lm.direction}</span>
                   {lm.is_primary && (
                     <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded">Primary</span>
                   )}
                 </div>
-                <p className="text-sm text-slate-300 mt-0.5 truncate">{lm.ai_normalized || lm.description}</p>
+                <p className="text-sm text-slate-300 mt-0.5 truncate">{lm.ai_normalized || lm.description_text}</p>
               </div>
               <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-1" />
             </div>
@@ -142,7 +157,6 @@ Output ONLY the normalized phrase, nothing else.`,
         </div>
       )}
 
-      {/* Step: Landmark Type */}
       {step === 'type' && (
         <div>
           <p className="text-sm text-slate-400 mb-3">
@@ -166,7 +180,6 @@ Output ONLY the normalized phrase, nothing else.`,
         </div>
       )}
 
-      {/* Step: Direction */}
       {step === 'direction' && (
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -188,7 +201,6 @@ Output ONLY the normalized phrase, nothing else.`,
         </div>
       )}
 
-      {/* Step: Describe */}
       {step === 'describe' && (
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -198,32 +210,23 @@ Output ONLY the normalized phrase, nothing else.`,
           <div className="space-y-3">
             <div>
               <label className="text-xs text-slate-500 uppercase tracking-wider mb-1 block">Distance (meters, optional)</label>
-              <input
-                type="number"
-                placeholder="e.g. 50"
-                value={current.distance}
+              <input type="number" placeholder="e.g. 50" value={current.distance}
                 onChange={e => setCurrent(prev => ({ ...prev, distance: e.target.value }))}
-                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600"
-              />
+                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600" />
             </div>
             <div>
               <label className="text-xs text-slate-500 uppercase tracking-wider mb-1 block">Describe in your words</label>
-              <textarea
-                rows={3}
-                placeholder="e.g. The blue kiosk selling airtime near the main road..."
+              <textarea rows={3} placeholder="e.g. The blue kiosk selling airtime near the main road..."
                 value={current.description}
                 onChange={e => setCurrent(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600 resize-none"
-              />
+                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600 resize-none" />
             </div>
-
             {aiResult && (
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
                 <p className="text-xs text-emerald-400 uppercase tracking-wider mb-1">AI Normalized</p>
                 <p className="text-sm text-white">{aiResult}</p>
               </div>
             )}
-
             <div className="flex gap-2">
               <button onClick={handleNormalize} disabled={!current.description || aiLoading}
                 className="flex-1 py-2.5 rounded-xl bg-slate-800 border border-blue-500/30 text-blue-400 text-sm font-medium hover:bg-blue-500/10 transition-all disabled:opacity-40 flex items-center justify-center gap-2">
