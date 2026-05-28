@@ -1,6 +1,9 @@
+Go to `src/pages/HelpSupport.jsx` on GitHub, replace just the `import` line and `handleSubmit` function — everything else stays identical:
+
+```jsx
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, MessageSquare, Send, CheckCircle, Loader2, Shield } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 import HexBackground from '../components/HexBackground';
 
 const FAQS = [
@@ -8,88 +11,40 @@ const FAQS = [
     category: 'Address Changes & KYC',
     icon: '🔄',
     items: [
-      {
-        q: 'What happens to my Sentinel ID if I move to a new location?',
-        a: 'Your existing Sentinel ID remains permanently linked to your original registered location — it is never deleted or overwritten. When you move, visit "Get My ID" and complete the process from your new home. This creates a new address record while your old one is preserved as historical data, giving banks and couriers a verifiable address timeline.',
-      },
-      {
-        q: 'Will I lose my trust score and vouch history when I move?',
-        a: 'Your trust score and vouch history are tied to each specific address record. Your old address record retains its full score and history as an audit trail, while your new address starts fresh and builds its own trust score. This prevents people from fraudulently transferring "earned trust" from a different location.',
-      },
-      {
-        q: 'How do I tell my bank or courier about my new Sentinel ID?',
-        a: 'Once you have generated your new Sentinel ID and begun check-ins, simply share the new ID with your institution. The Verify page allows any business to instantly look up your new ID and see your current trust score, residency tier, landmark anchors, and last-mile navigation link. There is no central update required — the ID itself carries all necessary verification data.',
-      },
-      {
-        q: 'How does address change history support KYC accuracy for banks?',
-        a: 'Banks performing KYC benefit from the immutable address history in three ways: (1) They can see when an address was first registered and how long persistence was maintained — a 90-day old address with 80+ trust score is strong proof of habitation. (2) If a customer claims to have "always lived" at a new address but the system shows it was registered last week, that is a fraud signal. (3) Multiple simultaneous active addresses under one account would be a red flag. The system creates a transparent, tamper-resistant residency record that is far more reliable than a self-reported form field.',
-      },
-      {
-        q: 'Can I have more than one active Sentinel ID at the same time?',
-        a: 'Yes — this is valid for people with two residences (e.g., rural family home + urban rental). Each address builds its own trust score independently. However, businesses and banks can query all addresses linked to your account, so attempting to inflate trust by maintaining a fraudulent secondary address is detectable. Legitimate multi-address use cases (seasonal workers, students, etc.) are fully supported.',
-      },
+      { q: 'What happens to my Sentinel ID if I move to a new location?', a: 'Your existing Sentinel ID remains permanently linked to your original registered location — it is never deleted or overwritten. When you move, visit "Get My ID" and complete the process from your new home. This creates a new address record while your old one is preserved as historical data, giving banks and couriers a verifiable address timeline.' },
+      { q: 'Will I lose my trust score and vouch history when I move?', a: 'Your trust score and vouch history are tied to each specific address record. Your old address record retains its full score and history as an audit trail, while your new address starts fresh and builds its own trust score. This prevents people from fraudulently transferring "earned trust" from a different location.' },
+      { q: 'How do I tell my bank or courier about my new Sentinel ID?', a: 'Once you have generated your new Sentinel ID and begun check-ins, simply share the new ID with your institution. The Verify page allows any business to instantly look up your new ID and see your current trust score, residency tier, landmark anchors, and last-mile navigation link. There is no central update required — the ID itself carries all necessary verification data.' },
+      { q: 'How does address change history support KYC accuracy for banks?', a: 'Banks performing KYC benefit from the immutable address history in three ways: (1) They can see when an address was first registered and how long persistence was maintained — a 90-day old address with 80+ trust score is strong proof of habitation. (2) If a customer claims to have "always lived" at a new address but the system shows it was registered last week, that is a fraud signal. (3) Multiple simultaneous active addresses under one account would be a red flag. The system creates a transparent, tamper-resistant residency record that is far more reliable than a self-reported form field.' },
+      { q: 'Can I have more than one active Sentinel ID at the same time?', a: 'Yes — this is valid for people with two residences (e.g., rural family home + urban rental). Each address builds its own trust score independently. However, businesses and banks can query all addresses linked to your account, so attempting to inflate trust by maintaining a fraudulent secondary address is detectable. Legitimate multi-address use cases (seasonal workers, students, etc.) are fully supported.' },
     ],
   },
   {
     category: 'GPS & Accuracy',
     icon: '📡',
     items: [
-      {
-        q: 'Why does the GPS take some time to get my location?',
-        a: 'Our technology uses a two-stage process. It first gets a quick approximate fix within 1–2 seconds to show your general area, then quietly refines it to precise accuracy in the background. Indoor usage or cloudy skies can slow the second stage — simply tap your location on the map to place it manually and skip the wait.',
-      },
-      {
-        q: 'Why is my accuracy still low even though I\'m outside?',
-        a: 'GPS satellites take time to triangulate. Move to an open area away from tall buildings, wait 15–30 seconds, and the accuracy will improve. Ensure Location Services are set to "Always On" or "While Using App" in your device settings.',
-      },
-      {
-        q: 'What is the Manual Map Override?',
-        a: 'If GPS accuracy does not reach the required precision within a reasonable time, you can tap your exact position on the map shown during ID generation. This places your location precisely and enables the Save button immediately without waiting.',
-      },
-      {
-        q: 'Will my Sentinel ID change if I move a few steps?',
-        a: 'No. Our technology assigns you a stable location zone — moving a few steps within your compound will not change your ID. The system is designed to stay locked to your address even when your phone\'s GPS signal fluctuates slightly.',
-      },
+      { q: 'Why does the GPS take some time to get my location?', a: 'Our technology uses a two-stage process. It first gets a quick approximate fix within 1–2 seconds to show your general area, then quietly refines it to precise accuracy in the background. Indoor usage or cloudy skies can slow the second stage — simply tap your location on the map to place it manually and skip the wait.' },
+      { q: "Why is my accuracy still low even though I'm outside?", a: 'GPS satellites take time to triangulate. Move to an open area away from tall buildings, wait 15–30 seconds, and the accuracy will improve. Ensure Location Services are set to "Always On" or "While Using App" in your device settings.' },
+      { q: 'What is the Manual Map Override?', a: 'If GPS accuracy does not reach the required precision within a reasonable time, you can tap your exact position on the map shown during ID generation. This places your location precisely and enables the Save button immediately without waiting.' },
+      { q: "Will my Sentinel ID change if I move a few steps?", a: "No. Our technology assigns you a stable location zone — moving a few steps within your compound will not change your ID. The system is designed to stay locked to your address even when your phone's GPS signal fluctuates slightly." },
     ],
   },
   {
     category: 'Residency Tiers',
     icon: '🛡️',
     items: [
-      {
-        q: 'What is the difference between Visitor, Resident, and Sentinel Permanent?',
-        a: 'Visitor is instant — anyone who generates an ID starts here. Resident requires 3 check-ins from your location over 3 separate days, proving you actually sleep there. Sentinel Permanent requires 4 weekly check-ins spread across at least 4 weeks — proving long-term continuous residency. Each tier unlocks higher trust scores accepted by banks and couriers.',
-      },
-      {
-        q: 'Why can Guest addresses never reach Sentinel Permanent?',
-        a: 'This rule prevents short-term guests from fraudulently claiming permanent residency. If you selected "Guest" during setup but are actually an Owner or Tenant, contact support to correct your residency type.',
-      },
-      {
-        q: 'How does the 20-hour time lock work?',
-        a: 'To prevent fake check-ins, the system enforces a minimum 20-hour gap between check-ins. The dashboard shows a live countdown. This ensures each check-in represents a genuine overnight stay.',
-      },
-      {
-        q: 'How do neighbor vouches affect my trust score?',
-        a: 'Each confirmed vouch from a neighbor adds +5 points to your trust score, up to a maximum of +20 points from vouching alone. Vouches are social proof that real neighbors recognize your presence — similar to a credit reference but for physical location.',
-      },
+      { q: 'What is the difference between Visitor, Resident, and Sentinel Permanent?', a: 'Visitor is instant — anyone who generates an ID starts here. Resident requires 3 check-ins from your location over 3 separate days, proving you actually sleep there. Sentinel Permanent requires 4 weekly check-ins spread across at least 4 weeks — proving long-term continuous residency. Each tier unlocks higher trust scores accepted by banks and couriers.' },
+      { q: 'Why can Guest addresses never reach Sentinel Permanent?', a: 'This rule prevents short-term guests from fraudulently claiming permanent residency. If you selected "Guest" during setup but are actually an Owner or Tenant, contact support to correct your residency type.' },
+      { q: 'How does the 20-hour time lock work?', a: 'To prevent fake check-ins, the system enforces a minimum 20-hour gap between check-ins. The dashboard shows a live countdown. This ensures each check-in represents a genuine overnight stay.' },
+      { q: 'How do neighbor vouches affect my trust score?', a: 'Each confirmed vouch from a neighbor adds +5 points to your trust score, up to a maximum of +20 points from vouching alone. Vouches are social proof that real neighbors recognize your presence — similar to a credit reference but for physical location.' },
     ],
   },
   {
     category: 'Offline Usage',
     icon: '📶',
     items: [
-      {
-        q: 'Can I generate my Sentinel ID without internet?',
-        a: 'Yes. Our technology computes your unique address ID entirely on your device — no internet connection is needed for ID generation. As long as your device can receive GPS signals, you can generate, view, and share your Sentinel ID with zero mobile data.',
-      },
-      {
-        q: 'What happens if I check in while offline?',
-        a: 'The app detects you are offline and saves the check-in locally on your device. Your location and timestamp are recorded. The moment your device reconnects to the internet, the app automatically syncs the data — you will see a "Synced" confirmation on the dashboard.',
-      },
-      {
-        q: 'What if I close the app before it syncs?',
-        a: 'The offline data persists even after closing the browser. The next time you open the app with connectivity, it will detect and sync the pending check-in automatically.',
-      },
+      { q: 'Can I generate my Sentinel ID without internet?', a: 'Yes. Our technology computes your unique address ID entirely on your device — no internet connection is needed for ID generation. As long as your device can receive GPS signals, you can generate, view, and share your Sentinel ID with zero mobile data.' },
+      { q: 'What happens if I check in while offline?', a: 'The app detects you are offline and saves the check-in locally on your device. Your location and timestamp are recorded. The moment your device reconnects to the internet, the app automatically syncs the data — you will see a "Synced" confirmation on the dashboard.' },
+      { q: 'What if I close the app before it syncs?', a: 'The offline data persists even after closing the browser. The next time you open the app with connectivity, it will detect and sync the pending check-in automatically.' },
     ],
   },
 ];
@@ -106,10 +61,10 @@ export default function HelpSupport({ lang }) {
   const handleSubmit = async () => {
     if (!form.subject || !form.message.trim()) return;
     setSubmitting(true);
-    const user = await base44.auth.me();
-    await base44.entities.SupportTicket.create({
-      user_email: user.email,
-      user_name: user.full_name,
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('support_tickets').insert({
+      user_id: user?.id,
+      user_email: user?.email,
       subject: form.subject,
       message: form.message,
       sentinel_id: form.sentinel_id || null,
@@ -125,8 +80,6 @@ export default function HelpSupport({ lang }) {
     <div className="min-h-screen pt-16" style={{ background: '#0a0a0a' }}>
       <HexBackground opacity={0.05} />
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-10 space-y-6">
-
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-xs font-medium uppercase tracking-widest mb-4">
             <MessageSquare className="w-3 h-3" /> Help & Support
@@ -135,21 +88,15 @@ export default function HelpSupport({ lang }) {
           <p className="text-slate-500 text-sm">Answers to common questions, and a direct line to our team.</p>
         </div>
 
-        {/* FAQ Sections */}
         {FAQS.map((section, si) => (
-          <div key={section.category} className="rounded-2xl border border-zinc-800 overflow-hidden"
-            style={{ background: '#18181b' }}>
-            <button
-              onClick={() => setOpenCategory(openCategory === si ? null : si)}
+          <div key={section.category} className="rounded-2xl border border-zinc-800 overflow-hidden" style={{ background: '#18181b' }}>
+            <button onClick={() => setOpenCategory(openCategory === si ? null : si)}
               className="w-full flex items-center gap-3 p-5 text-left hover:bg-white/[0.02] transition-all">
               <span className="text-xl">{section.icon}</span>
               <span className="text-white font-semibold flex-1">{section.category}</span>
               <span className="text-xs text-slate-600 mr-2">{section.items.length} articles</span>
-              {openCategory === si
-                ? <ChevronDown className="w-4 h-4 text-green-400" />
-                : <ChevronRight className="w-4 h-4 text-slate-600" />}
+              {openCategory === si ? <ChevronDown className="w-4 h-4 text-green-400" /> : <ChevronRight className="w-4 h-4 text-slate-600" />}
             </button>
-
             {openCategory === si && (
               <div className="border-t border-slate-800/60">
                 {section.items.map((item, ii) => {
@@ -157,17 +104,12 @@ export default function HelpSupport({ lang }) {
                   const isOpen = openItem === key;
                   return (
                     <div key={ii} className="border-b border-slate-800/40 last:border-0">
-                      <button
-                        onClick={() => setOpenItem(isOpen ? null : key)}
+                      <button onClick={() => setOpenItem(isOpen ? null : key)}
                         className="w-full flex items-start gap-3 px-5 py-4 text-left hover:bg-white/[0.02] transition-all">
                         <ChevronRight className={`w-3.5 h-3.5 text-green-400 mt-0.5 flex-shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
                         <span className="text-sm text-slate-300 font-medium">{item.q}</span>
                       </button>
-                      {isOpen && (
-                        <div className="px-5 pb-4 pl-11">
-                          <p className="text-sm text-slate-500 leading-relaxed">{item.a}</p>
-                        </div>
-                      )}
+                      {isOpen && <div className="px-5 pb-4 pl-11"><p className="text-sm text-slate-500 leading-relaxed">{item.a}</p></div>}
                     </div>
                   );
                 })}
@@ -176,9 +118,7 @@ export default function HelpSupport({ lang }) {
           </div>
         ))}
 
-        {/* Contact Form */}
-        <div className="p-6 rounded-2xl border border-zinc-800"
-          style={{ background: '#18181b' }}>
+        <div className="p-6 rounded-2xl border border-zinc-800" style={{ background: '#18181b' }}>
           <div className="flex items-center gap-3 mb-5">
             <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
               <Send className="w-4 h-4 text-green-400" />
@@ -188,7 +128,6 @@ export default function HelpSupport({ lang }) {
               <p className="text-xs text-slate-500">Our team typically responds within 24 hours.</p>
             </div>
           </div>
-
           {submitted ? (
             <div className="flex flex-col items-center py-8 gap-3">
               <CheckCircle className="w-10 h-10 text-green-400" />
@@ -205,25 +144,19 @@ export default function HelpSupport({ lang }) {
                   {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="text-xs text-slate-500 uppercase tracking-wider mb-1.5 block">Your Sentinel ID (optional)</label>
-                <input type="text" placeholder="XXXX-XXXX-XXXX-XXX"
-                  value={form.sentinel_id}
+                <input type="text" placeholder="XXXX-XXXX-XXXX-XXX" value={form.sentinel_id}
                   onChange={e => setForm(p => ({ ...p, sentinel_id: e.target.value }))}
                   className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 placeholder-zinc-600 font-mono" />
               </div>
-
               <div>
                 <label className="text-xs text-slate-500 uppercase tracking-wider mb-1.5 block">Describe your issue *</label>
-                <textarea rows={4} placeholder="Please describe your issue in detail. Include any error messages or steps you've already tried..."
-                  value={form.message}
-                  onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
+                <textarea rows={4} placeholder="Please describe your issue in detail..."
+                  value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
                   className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/60 placeholder-zinc-600 resize-none" />
               </div>
-
-              <button onClick={handleSubmit}
-                disabled={!form.subject || !form.message.trim() || submitting}
+              <button onClick={handleSubmit} disabled={!form.subject || !form.message.trim() || submitting}
                 className="w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(74,222,128,0.2)]">
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</> : <><Send className="w-4 h-4" /> Submit Ticket</>}
               </button>
@@ -231,13 +164,8 @@ export default function HelpSupport({ lang }) {
           )}
         </div>
 
-        {/* Quick links */}
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: '🛡️', label: 'Get My ID', href: '/get-id' },
-            { icon: '🔍', label: 'Verify Client', href: '/verify' },
-            { icon: '📊', label: 'Dashboard', href: '/dashboard' },
-          ].map(({ icon, label, href }) => (
+          {[{ icon: '🛡️', label: 'Get My ID', href: '/get-id' }, { icon: '🔍', label: 'Verify Client', href: '/verify' }, { icon: '📊', label: 'Dashboard', href: '/dashboard' }].map(({ icon, label, href }) => (
             <a key={href} href={href}
               className="flex flex-col items-center gap-2 p-4 rounded-xl border border-slate-800/60 bg-slate-900/40 hover:border-green-500/30 hover:bg-green-500/5 transition-all text-center">
               <span className="text-xl">{icon}</span>
@@ -249,3 +177,6 @@ export default function HelpSupport({ lang }) {
     </div>
   );
 }
+```
+
+Commit and paste the next error.
