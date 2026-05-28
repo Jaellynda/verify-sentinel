@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Shield, MapPin, Copy, CheckCircle, Clock, ExternalLink, RefreshCw, Navigation, Wifi, WifiOff, AlertCircle } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 import { isInsideHex, calculateTrustScore, formatCoordinates } from '../lib/h3core';
 import { translate } from '../lib/i18n';
 import {
@@ -43,7 +43,6 @@ function computeTier(nights, weeklyPings, residencyType) {
 
 function TimeLockCountdown({ lastCheckin }) {
   const [remaining, setRemaining] = useState(getTimeLockRemaining(lastCheckin));
-
   useEffect(() => {
     if (remaining <= 0) return;
     const interval = setInterval(() => {
@@ -53,7 +52,6 @@ function TimeLockCountdown({ lastCheckin }) {
     }, 1000);
     return () => clearInterval(interval);
   }, [lastCheckin]);
-
   if (remaining <= 0) return null;
   return (
     <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
@@ -65,8 +63,6 @@ function TimeLockCountdown({ lastCheckin }) {
     </div>
   );
 }
-
-
 
 export default function Dashboard({ lang = 'en' }) {
   const tr = (key) => translate(lang, key);
@@ -83,7 +79,6 @@ export default function Dashboard({ lang = 'en' }) {
 
   useEffect(() => {
     loadData();
-
     const goOnline = async () => {
       setIsOnline(true);
       if (hasPendingCheckins()) {
@@ -98,7 +93,6 @@ export default function Dashboard({ lang = 'en' }) {
       }
     };
     const goOffline = () => setIsOnline(false);
-
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
     return () => {
@@ -108,30 +102,43 @@ export default function Dashboard({ lang = 'en' }) {
   }, []);
 
   const loadData = async (silent = false) => {
-    // Only show the loading screen on the very first load (when we have no address yet)
     if (!silent && !addressRef.current) setLoading(true);
     try {
-      const user = await base44.auth.me();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
-      const addresses = await base44.entities.SentinelAddress.filter({ user_email: user.email }, '-created_date', 1);
-      if (addresses.length > 0) {
+
+      const { data: addresses } = await supabase
+        .from('sentinel_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (addresses?.length > 0) {
         const addr = addresses[0];
         addressRef.current = addr;
         setAddress(addr);
-        const lms = await base44.entities.LandmarkDescription.filter({ h3_index: addr.h3_index });
-        setLandmarks(lms);
+
+        const { data: lms } = await supabase
+          .from('landmark_descriptions')
+          .select('*')
+          .eq('h3_index', addr.h3_index);
+        setLandmarks(lms || []);
       }
-    } catch {
-      // auth failed or user not logged in — show empty state
+    } catch (err) {
+      console.error('loadData error:', err);
     }
     setLoading(false);
   };
 
   const processQueuedCheckin = useCallback(async ({ addressId, lat, lng, timestamp }) => {
-    const currentAddr = await base44.entities.SentinelAddress.filter({ id: addressId });
-    if (!currentAddr.length) return;
-    const addr = currentAddr[0];
-    await applyCheckin(addr, lat, lng, new Date(timestamp));
+    const { data } = await supabase
+      .from('sentinel_addresses')
+      .select('*')
+      .eq('id', addressId)
+      .single();
+    if (!data) return;
+    await applyCheckin(data, lat, lng, new Date(timestamp));
   }, []);
 
   const applyCheckin = async (addr, lat, lng, checkinTime = new Date()) => {
@@ -153,29 +160,37 @@ export default function Dashboard({ lang = 'en' }) {
       trust_score: newScore,
       status: newTier,
       last_checkin: checkinTime.toISOString(),
+      updated_at: new Date().toISOString(),
     };
     if (daysSinceWeekly >= 7) updateData.last_weekly_ping = checkinTime.toISOString();
 
-    await base44.entities.SentinelAddress.update(addr.id, updateData);
+    await supabase.from('sentinel_addresses').update(updateData).eq('id', addr.id);
+
+    // Record trust score history
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('trust_score_history').insert({
+      sentinel_address_id: addr.id,
+      user_id: user?.id,
+      user_email: addr.user_email,
+      score: newScore,
+      event: 'checkin',
+      notes: `Check-in #${newNights}`,
+    });
   };
 
   const handleCheckin = async () => {
     if (!address) return;
-
     const remaining = getTimeLockRemaining(address.last_checkin);
     if (remaining > 0) {
       setCheckinMessage(`⏱ ${formatTimeRemaining(remaining)} until next check-in is allowed.`);
       return;
     }
-
     if (address.residency_type === 'Guest' && address.status === 'Resident') {
       setCheckinMessage('ℹ Guest residency cannot advance to Sentinel Permanent.');
       return;
     }
-
     setCheckingIn(true);
     setCheckinMessage('');
-
     if (!navigator.onLine) {
       queueCheckin({
         addressId: address.id,
@@ -190,13 +205,11 @@ export default function Dashboard({ lang = 'en' }) {
       setCheckingIn(false);
       return;
     }
-
     if (!navigator.geolocation) {
       setCheckinMessage('GPS unavailable.');
       setCheckingIn(false);
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -275,10 +288,8 @@ export default function Dashboard({ lang = 'en' }) {
   return (
     <div className="min-h-screen pt-16" style={{ background: '#060B13' }}>
       <HexBackground opacity={0.07} />
-
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-10 space-y-5">
 
-        {/* Offline / Sync Banner */}
         {!isOnline && (
           <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
             <WifiOff className="w-4 h-4 text-amber-400 flex-shrink-0" />
@@ -301,128 +312,108 @@ export default function Dashboard({ lang = 'en' }) {
           </div>
         )}
 
-        {/* Header Card + NIRA side-by-side */}
         <div className="grid lg:grid-cols-2 gap-5">
-        <div className="p-6 rounded-3xl border border-slate-800/60"
-          style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
-          <div className="h-px bg-gradient-to-r from-transparent via-green-500/40 to-transparent mb-5 -mx-6 px-6" />
-
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">{tr('dash_title')}</p>
-              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold border ${tierCfg.bg} ${tierCfg.border} ${tierCfg.color}`}>
-                <span>{tierCfg.icon}</span>
-                <span>{tier}</span>
-                {!isMaxTier && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
-              </div>
-              {address.residency_type && (
-                <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-slate-800/60 border border-slate-700/40 text-slate-500 ml-2">
-                  {address.residency_type === 'Owner' ? '🏗️' : address.residency_type === 'Tenant' ? '🔑' : '🧳'}
-                  {address.residency_type}
+          <div className="p-6 rounded-3xl border border-slate-800/60"
+            style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(20px)' }}>
+            <div className="h-px bg-gradient-to-r from-transparent via-green-500/40 to-transparent mb-5 -mx-6 px-6" />
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">{tr('dash_title')}</p>
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold border ${tierCfg.bg} ${tierCfg.border} ${tierCfg.color}`}>
+                  <span>{tierCfg.icon}</span>
+                  <span>{tier}</span>
+                  {!isMaxTier && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
                 </div>
-              )}
-            </div>
-            <button onClick={loadData} className="text-slate-600 hover:text-slate-400 transition-colors">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Tier Progress Path */}
-          <div className="flex items-center gap-2 mb-5 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
-            {Object.entries(TIERS).map(([name, cfg], i, arr) => (
-              <div key={name} className="flex items-center gap-2 flex-1">
-                <div className={`flex flex-col items-center gap-1 flex-1 ${
-                  name === tier ? cfg.color : (Object.keys(TIERS).indexOf(name) < Object.keys(TIERS).indexOf(tier) ? 'text-emerald-500' : 'text-slate-700')
-                }`}>
-                  <span className="text-base">{cfg.icon}</span>
-                  <span className="text-xs font-medium text-center leading-tight">{name}</span>
-                  {name === tier && <div className="w-1.5 h-1.5 rounded-full bg-current" />}
-                </div>
-                {i < arr.length - 1 && (
-                  <div className={`h-px flex-1 ${Object.keys(TIERS).indexOf(tier) > i ? 'bg-emerald-500/40' : 'bg-slate-700/50'}`} />
+                {address.residency_type && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-slate-800/60 border border-slate-700/40 text-slate-500 ml-2">
+                    {address.residency_type === 'Owner' ? '🏗️' : address.residency_type === 'Tenant' ? '🔑' : '🧳'}
+                    {address.residency_type}
+                  </div>
                 )}
               </div>
-            ))}
-          </div>
-
-          {/* Next requirement */}
-          {!isMaxTier && (
-            <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-700/20 mb-4">
-              <p className="text-xs text-slate-600">
-                <span className="text-slate-400">Next tier:</span> {tierCfg.nextTier} — requires {tierCfg.requirement}
-                {isGuestBlocked && <span className="text-amber-500"> (Guest type cannot reach Sentinel Permanent)</span>}
-              </p>
-            </div>
-          )}
-
-          {/* Sentinel ID */}
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/40 mb-4">
-            <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Sentinel ID</p>
-            <div className="flex items-center justify-between">
-              <span className="text-xl font-bold text-white tracking-wider"
-                style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                {address.sentinel_id}
-              </span>
-              <button onClick={handleCopy}
-                className="ml-3 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-green-400 hover:border-green-500/50 transition-all">
-                {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              <button onClick={loadData} className="text-slate-600 hover:text-slate-400 transition-colors">
+                <RefreshCw className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-slate-600 mt-1 font-mono">{address.h3_index}</p>
-          </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
-              <p className="text-xl font-bold text-green-400 font-mono">{address.trust_score || 30}</p>
-              <p className="text-xs text-slate-600 mt-0.5">{tr('dash_trust')}</p>
-              <div className="mt-1.5 flex items-center justify-center gap-1">
-                {(address.trust_score || 30) < 50 && (
-                  <span className="text-xs text-amber-500/70 leading-tight">↑ builds with check-ins</span>
-                )}
-                {(address.trust_score || 30) >= 50 && (address.trust_score || 30) < 80 && (
-                  <span className="text-xs text-blue-400/70 leading-tight">↑ add vouches to grow</span>
-                )}
-                {(address.trust_score || 30) >= 80 && (
-                  <span className="text-xs text-emerald-400/70 leading-tight">✓ KYC-grade</span>
-                )}
+            <div className="flex items-center gap-2 mb-5 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
+              {Object.entries(TIERS).map(([name, cfg], i, arr) => (
+                <div key={name} className="flex items-center gap-2 flex-1">
+                  <div className={`flex flex-col items-center gap-1 flex-1 ${
+                    name === tier ? cfg.color : (Object.keys(TIERS).indexOf(name) < Object.keys(TIERS).indexOf(tier) ? 'text-emerald-500' : 'text-slate-700')
+                  }`}>
+                    <span className="text-base">{cfg.icon}</span>
+                    <span className="text-xs font-medium text-center leading-tight">{name}</span>
+                    {name === tier && <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                  </div>
+                  {i < arr.length - 1 && (
+                    <div className={`h-px flex-1 ${Object.keys(TIERS).indexOf(tier) > i ? 'bg-emerald-500/40' : 'bg-slate-700/50'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {!isMaxTier && (
+              <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-700/20 mb-4">
+                <p className="text-xs text-slate-600">
+                  <span className="text-slate-400">Next tier:</span> {tierCfg.nextTier} — requires {tierCfg.requirement}
+                  {isGuestBlocked && <span className="text-amber-500"> (Guest type cannot reach Sentinel Permanent)</span>}
+                </p>
+              </div>
+            )}
+
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-700/40 mb-4">
+              <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Sentinel ID</p>
+              <div className="flex items-center justify-between">
+                <span className="text-xl font-bold text-white tracking-wider"
+                  style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                  {address.sentinel_id}
+                </span>
+                <button onClick={handleCopy}
+                  className="ml-3 p-2 rounded-lg bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-green-400 hover:border-green-500/50 transition-all">
+                  {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-slate-600 mt-1 font-mono">{address.h3_index}</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
+                <p className="text-xl font-bold text-green-400 font-mono">{address.trust_score || 30}</p>
+                <p className="text-xs text-slate-600 mt-0.5">{tr('dash_trust')}</p>
+                <div className="mt-1.5 flex items-center justify-center gap-1">
+                  {(address.trust_score || 30) < 50 && <span className="text-xs text-amber-500/70 leading-tight">↑ builds with check-ins</span>}
+                  {(address.trust_score || 30) >= 50 && (address.trust_score || 30) < 80 && <span className="text-xs text-blue-400/70 leading-tight">↑ add vouches to grow</span>}
+                  {(address.trust_score || 30) >= 80 && <span className="text-xs text-emerald-400/70 leading-tight">✓ KYC-grade</span>}
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
+                <p className="text-xl font-bold text-emerald-400 font-mono">{nights}</p>
+                <p className="text-xs text-slate-600 mt-0.5">Check-ins</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
+                <p className="text-xl font-bold text-amber-400 font-mono">{weeklyPings}/4</p>
+                <p className="text-xs text-slate-600 mt-0.5">Weekly Pings</p>
               </div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
-              <p className="text-xl font-bold text-emerald-400 font-mono">{nights}</p>
-              <p className="text-xs text-slate-600 mt-0.5">Check-ins</p>
+          </div>
+
+          <div className="p-6 rounded-3xl border border-slate-800/60 flex flex-col"
+            style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-base">🇺🇬</span>
+              <h3 className="text-sm font-semibold text-white">NIRA Identity Verification</h3>
+              <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">Full KYC</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/30 text-center">
-              <p className="text-xl font-bold text-amber-400 font-mono">{weeklyPings}/4</p>
-              <p className="text-xs text-slate-600 mt-0.5">Weekly Pings</p>
-            </div>
+            <NIRAVerification addressId={address.id} userEmail={address.user_email} onVerified={loadData} />
           </div>
         </div>
 
-        {/* NIRA panel — right column on desktop */}
-        <div className="p-6 rounded-3xl border border-slate-800/60 flex flex-col"
-          style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-base">🇺🇬</span>
-            <h3 className="text-sm font-semibold text-white">NIRA Identity Verification</h3>
-            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">Full KYC</span>
-          </div>
-          <NIRAVerification
-            addressId={address.id}
-            userEmail={address.user_email}
-            onVerified={loadData}
-          />
-        </div>
-        </div>{/* end header+NIRA grid */}
-
-        {/* Trust Arc + Check-in (Persistence) */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
           <h3 className="text-sm font-semibold text-white mb-1">{tr('dash_persistence')}</h3>
           <p className="text-xs text-slate-500 mb-5">{tr('dash_persistence_sub')}</p>
           <TrustArc score={address.trust_score || 30} nights={Math.min(nights, 3)} maxNights={3} />
-
-          {/* Weekly ping nodes */}
           <div className="mt-4 mb-5">
             <p className="text-xs text-slate-600 uppercase tracking-wider mb-2">Weekly Pings (Sentinel Permanent)</p>
             <div className="flex gap-2">
@@ -432,98 +423,62 @@ export default function Dashboard({ lang = 'en' }) {
                 }`} />
               ))}
             </div>
-            {isGuestBlocked && (
-              <p className="text-xs text-amber-500/70 mt-1.5">🧳 Guest accounts cannot reach Sentinel Permanent</p>
-            )}
+            {isGuestBlocked && <p className="text-xs text-amber-500/70 mt-1.5">🧳 Guest accounts cannot reach Sentinel Permanent</p>}
           </div>
-
           {isTimeLocked && <div className="mb-4"><TimeLockCountdown lastCheckin={address.last_checkin} /></div>}
-
-          <button
-            onClick={handleCheckin}
+          <button onClick={handleCheckin}
             disabled={checkingIn || isMaxTier || (isTimeLocked && !checkinMessage)}
             className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-              isMaxTier
-                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
-                : isTimeLocked
-                ? 'bg-slate-800/60 border border-slate-700/40 text-slate-600 cursor-not-allowed'
-                : !isOnline
-                ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
-                : 'bg-green-500 hover:bg-green-400 text-black shadow-[0_0_20px_rgba(74,222,128,0.3)]'
-            }`}
-          >
-            {checkingIn ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
-            ) : isMaxTier ? (
-              <><CheckCircle className="w-4 h-4" /> Sentinel Permanent — Maximum Trust</>
-            ) : isTimeLocked ? (
-              <><Clock className="w-4 h-4" /> Time-Locked</>
-            ) : !isOnline ? (
-              <><WifiOff className="w-4 h-4" /> Check-in Offline (will sync)</>
-            ) : (
-              <><Navigation className="w-4 h-4" /> {tr('dash_checkin')}</>
-            )}
+              isMaxTier ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
+              : isTimeLocked ? 'bg-slate-800/60 border border-slate-700/40 text-slate-600 cursor-not-allowed'
+              : !isOnline ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
+              : 'bg-green-500 hover:bg-green-400 text-black shadow-[0_0_20px_rgba(74,222,128,0.3)]'
+            }`}>
+            {checkingIn ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
+            : isMaxTier ? <><CheckCircle className="w-4 h-4" /> Sentinel Permanent — Maximum Trust</>
+            : isTimeLocked ? <><Clock className="w-4 h-4" /> Time-Locked</>
+            : !isOnline ? <><WifiOff className="w-4 h-4" /> Check-in Offline (will sync)</>
+            : <><Navigation className="w-4 h-4" /> {tr('dash_checkin')}</>}
           </button>
-
           {checkinMessage && (
             <div className={`mt-3 p-3 rounded-xl text-xs text-center ${
               checkinMessage.startsWith('✓') ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
               : checkinMessage.startsWith('📶') ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
               : 'bg-slate-800/60 border border-slate-700/30 text-slate-400'
-            }`}>
-              {checkinMessage}
-            </div>
+            }`}>{checkinMessage}</div>
           )}
         </div>
 
-        {/* Vouching System */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
-          <VouchingSystem
-            addressId={address.id}
-            sentinelId={address.sentinel_id}
-            h3Index={address.h3_index}
-            vouchCount={address.vouches_count || 0}
-            onVouchAdded={loadData}
-          />
+          <VouchingSystem addressId={address.id} sentinelId={address.sentinel_id}
+            h3Index={address.h3_index} vouchCount={address.vouches_count || 0} onVouchAdded={loadData} />
         </div>
 
-        {/* Trust Score Graph */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
           <TrustScoreGraph addressId={address.id} userEmail={address.user_email} currentScore={address.trust_score || 30} />
         </div>
 
-        {/* Address History Trail */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
-          <AddressHistoryTrail
-            userEmail={address.user_email}
-            currentScore={address.trust_score || 30}
-          />
+          <AddressHistoryTrail userEmail={address.user_email} currentScore={address.trust_score || 30} />
         </div>
 
-        {/* Address Management */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
-          <AddressManagement
-            address={address}
-            onDeprecated={() => loadData()}
-          />
+          <AddressManagement address={address} onDeprecated={() => loadData()} />
         </div>
 
-        {/* Trust Badge */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)' }}>
           <TrustBadge address={address} />
         </div>
 
-        {/* Physical Anchors */}
         {landmarks.length > 0 && (
           <PhysicalAnchors landmarks={landmarks} onChanged={() => loadData(true)} />
         )}
 
-        {/* Deep Links */}
         <div className="p-6 rounded-3xl border border-slate-800/60"
           style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(20px)' }}>
           <h3 className="text-sm font-semibold text-white mb-4">{tr('dash_deep_link')}</h3>
