@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 import { Shield, Users, CheckCircle, MapPin, RefreshCw, Wifi, MessageSquare, TrendingUp } from 'lucide-react';
 import HexBackground from '../components/HexBackground';
 
@@ -12,21 +12,31 @@ export default function AdminAnalytics({ lang }) {
   const [tickets, setTickets] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const me = await base44.auth.me();
-      setUser(me);
-      if (me.role !== 'admin') { setLoading(false); return; }
-      const [addrs, tkts, hist] = await Promise.all([
-        base44.entities.SentinelAddress.list('-created_date', 500),
-        base44.entities.SupportTicket.list('-created_date', 200),
-        base44.entities.TrustScoreHistory.list('-created_date', 500),
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role !== 'admin') { setLoading(false); return; }
+      setIsAdmin(true);
+
+      const [{ data: addrs }, { data: tkts }, { data: hist }] = await Promise.all([
+        supabase.from('sentinel_addresses').select('*').order('created_at', { ascending: false }).limit(500),
+        supabase.from('support_tickets').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('trust_score_history').select('*').order('created_at', { ascending: false }).limit(500),
       ]);
-      setAddresses(addrs);
-      setTickets(tkts);
-      setHistory(hist);
+
+      setAddresses(addrs || []);
+      setTickets(tkts || []);
+      setHistory(hist || []);
       setLoading(false);
     })();
   }, []);
@@ -37,7 +47,7 @@ export default function AdminAnalytics({ lang }) {
     </div>
   );
 
-  if (user?.role !== 'admin') return (
+  if (!isAdmin) return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#060606' }}>
       <div className="text-center">
         <Shield className="w-12 h-12 text-slate-700 mx-auto mb-3" />
@@ -47,7 +57,6 @@ export default function AdminAnalytics({ lang }) {
     </div>
   );
 
-  // Derived metrics
   const totalIDs = addresses.length;
   const tierCounts = ['Visitor', 'Resident', 'Sentinel Permanent'].map(t => ({
     name: t, value: addresses.filter(a => a.status === t).length,
@@ -56,13 +65,12 @@ export default function AdminAnalytics({ lang }) {
     addresses.reduce((acc, a) => { acc[a.country || 'Other'] = (acc[a.country || 'Other'] || 0) + 1; return acc; }, {})
   ).map(([name, value]) => ({ name, value }));
 
-  // Daily check-ins from history (last 7 days)
   const now = Date.now();
   const dailyCheckins = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now - (6 - i) * 86400000);
     const label = d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
     const count = history.filter(h => {
-      const hd = new Date(h.created_date);
+      const hd = new Date(h.created_at);
       return hd.toDateString() === d.toDateString() && h.event === 'checkin';
     }).length;
     return { label, count };
@@ -85,8 +93,6 @@ export default function AdminAnalytics({ lang }) {
     <div className="min-h-screen pt-16" style={{ background: '#060606' }}>
       <HexBackground opacity={0.05} />
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-10 space-y-6">
-
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Admin Analytics</h1>
@@ -98,7 +104,6 @@ export default function AdminAnalytics({ lang }) {
           </button>
         </div>
 
-        {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {statCards.map(({ label, value, icon: Icon, color, bg, border }) => (
             <div key={label} className={`p-5 rounded-2xl border ${border} ${bg}`}
@@ -112,18 +117,14 @@ export default function AdminAnalytics({ lang }) {
           ))}
         </div>
 
-        {/* Charts Row 1 */}
         <div className="grid md:grid-cols-2 gap-5">
-          {/* Tier Distribution Pie */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(10px)' }}>
             <h3 className="text-sm font-semibold text-white mb-5">Residency Tier Distribution</h3>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={tierCounts} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
-                  {tierCounts.map((entry, i) => (
-                    <Cell key={i} fill={TIER_COLORS[entry.name]} fillOpacity={0.85} />
-                  ))}
+                  {tierCounts.map((entry, i) => <Cell key={i} fill={TIER_COLORS[entry.name]} fillOpacity={0.85} />)}
                 </Pie>
                 <Tooltip formatter={(v, n) => [v, n]}
                   contentStyle={{ background: '#0a0a0a', border: '1px solid rgba(74,222,128,0.2)', borderRadius: 8, fontSize: 12 }}
@@ -133,7 +134,6 @@ export default function AdminAnalytics({ lang }) {
             </ResponsiveContainer>
           </div>
 
-          {/* Daily Check-ins Line */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(10px)' }}>
             <h3 className="text-sm font-semibold text-white mb-5">Daily Check-ins (Last 7 Days)</h3>
@@ -152,9 +152,7 @@ export default function AdminAnalytics({ lang }) {
           </div>
         </div>
 
-        {/* Charts Row 2 */}
         <div className="grid md:grid-cols-2 gap-5">
-          {/* Country Distribution */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(10px)' }}>
             <h3 className="text-sm font-semibold text-white mb-5">Geographic Distribution</h3>
@@ -176,7 +174,6 @@ export default function AdminAnalytics({ lang }) {
             ) : <p className="text-slate-600 text-sm text-center py-8">No geographic data yet.</p>}
           </div>
 
-          {/* Support Tickets */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(10px)' }}>
             <h3 className="text-sm font-semibold text-white mb-2">Support Tickets</h3>
@@ -199,8 +196,6 @@ export default function AdminAnalytics({ lang }) {
               ))}
               {ticketsBySubject.length === 0 && <p className="text-xs text-slate-600 text-center py-4">No tickets yet.</p>}
             </div>
-
-            {/* Recent tickets */}
             {tickets.length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-800/60">
                 <p className="text-xs text-slate-600 uppercase tracking-wider mb-2">Recent</p>
