@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, CheckCircle, Loader2, Heart } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 import SentinelQRDisplay from './SentinelQRDisplay';
 import QRVouchScanner from './QRVouchScanner';
 
@@ -11,37 +11,43 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
   const [form, setForm] = useState({ target_sentinel_id: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [vouchForMe, setVouchForMe] = useState(false);
 
-  useEffect(() => {
-    loadVouches();
-  }, [addressId]);
+  useEffect(() => { loadVouches(); }, [addressId]);
 
   const loadVouches = async () => {
     setLoading(true);
-    const records = await base44.entities.Vouch.filter({ target_address_id: addressId }, '-created_date', 10);
-    setVouches(records);
+    const { data } = await supabase
+      .from('vouches')
+      .select('*')
+      .eq('target_address_id', addressId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    setVouches(data || []);
     setLoading(false);
   };
 
-  /** Vouch FOR a neighbor — user enters neighbor's Sentinel ID */
   const handleVouchNeighbor = async () => {
     if (!form.target_sentinel_id.trim()) return;
     setSubmitting(true);
-    const user = await base44.auth.me();
 
-    // Look up the target address by sentinel_id
-    const targets = await base44.entities.SentinelAddress.filter({ sentinel_id: form.target_sentinel_id.replace(/-/g, '').toUpperCase().replace(/(.{4})(.{4})(.{4})(.{3})/, '$1-$2-$3-$4') });
-    if (!targets.length) {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { data: targets } = await supabase
+      .from('sentinel_addresses')
+      .select('*')
+      .eq('sentinel_id', form.target_sentinel_id.trim())
+      .limit(1);
+
+    if (!targets?.length) {
       setSubmitting(false);
       alert('Sentinel ID not found. Check the ID and try again.');
       return;
     }
     const target = targets[0];
 
-    await base44.entities.Vouch.create({
+    await supabase.from('vouches').insert({
+      voucher_id: user.id,
       voucher_email: user.email,
-      voucher_name: user.full_name,
       target_sentinel_id: form.target_sentinel_id,
       target_h3_index: target.h3_index,
       target_address_id: target.id,
@@ -49,17 +55,17 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
       status: 'Confirmed',
     });
 
-    // Increment neighbor's vouch count + trust score
     const newVouches = (target.vouches_count || 0) + 1;
     const newScore = Math.min(100, (target.trust_score || 30) + 5);
-    await base44.entities.SentinelAddress.update(target.id, {
-      vouches_count: newVouches,
-      trust_score: newScore,
-    });
 
-    // Record in history
-    await base44.entities.TrustScoreHistory.create({
+    await supabase
+      .from('sentinel_addresses')
+      .update({ vouches_count: newVouches, trust_score: newScore })
+      .eq('id', target.id);
+
+    await supabase.from('trust_score_history').insert({
       sentinel_address_id: target.id,
+      user_id: target.user_id,
       user_email: target.user_email,
       score: newScore,
       event: 'vouch_received',
@@ -68,7 +74,11 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
 
     setDone(true);
     setSubmitting(false);
-    setTimeout(() => { setDone(false); setShowForm(false); setForm({ target_sentinel_id: '', message: '' }); }, 2500);
+    setTimeout(() => {
+      setDone(false);
+      setShowForm(false);
+      setForm({ target_sentinel_id: '', message: '' });
+    }, 2500);
   };
 
   return (
@@ -87,7 +97,6 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
         Vouch for a neighbor by entering their Sentinel ID.
       </p>
 
-      {/* My QR code for neighbors to scan */}
       <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-slate-900/50 border border-slate-700/30 mb-4">
         <SentinelQRDisplay sentinelId={sentinelId} size={120} />
         <div>
@@ -97,10 +106,8 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
         </div>
       </div>
 
-      {/* QR Scanner for vouching neighbors */}
       <QRVouchScanner onVouchComplete={onVouchAdded} />
 
-      {/* Vouches received */}
       {loading ? (
         <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 text-green-400 animate-spin" /></div>
       ) : vouches.length > 0 ? (
@@ -124,7 +131,6 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
         </div>
       )}
 
-      {/* Vouch a neighbor */}
       {!showForm ? (
         <button onClick={() => setShowForm(true)}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 text-sm font-medium hover:bg-green-500/20 transition-all">
@@ -133,20 +139,14 @@ export default function VouchingSystem({ addressId, sentinelId, h3Index, vouchCo
       ) : (
         <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-green-500/20">
           <p className="text-xs text-slate-400 font-semibold">Enter your neighbor's Sentinel ID to vouch for them:</p>
-          <input
-            type="text"
-            placeholder="e.g. 8921-F3A2-B100-9E7"
+          <input type="text" placeholder="e.g. 8921-F3A2-B100-9E7"
             value={form.target_sentinel_id}
             onChange={e => setForm(p => ({ ...p, target_sentinel_id: e.target.value }))}
-            className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/60 placeholder-slate-600 font-mono"
-          />
-          <input
-            type="text"
-            placeholder="Optional: 'I know this person lives here'"
+            className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/60 placeholder-slate-600 font-mono" />
+          <input type="text" placeholder="Optional: 'I know this person lives here'"
             value={form.message}
             onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
-            className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/60 placeholder-slate-600"
-          />
+            className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/60 placeholder-slate-600" />
           <div className="flex gap-2">
             <button onClick={() => setShowForm(false)}
               className="flex-1 py-2 rounded-xl border border-slate-700/50 text-slate-500 text-sm hover:text-slate-300 transition-all">
