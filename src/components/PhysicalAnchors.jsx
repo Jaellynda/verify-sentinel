@@ -1,6 +1,3 @@
-Go to `src/components/PhysicalAnchors.jsx` on GitHub, replace entirely with:
-
-```jsx
 import { useState } from 'react';
 import { Pencil, Trash2, X, Save } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
@@ -173,6 +170,3 @@ export default function PhysicalAnchors({ landmarks: initialLandmarks, onChanged
     </div>
   );
 }
-```
-
-Commit and paste the next error.
