@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, CircleMarker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Search, X, MapPin, Shield, Info, ZoomIn } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 import { latLngToCell, cellToBoundary, gridDisk, cellToLatLng } from 'h3-js';
 import HexBackground from '../components/HexBackground';
 
@@ -13,7 +13,6 @@ function generateVisibleHexagons(centerLat, centerLng, ringSize = 6) {
   return gridDisk(center, ringSize);
 }
 
-/** Scales hex stroke weight with zoom so grid lines are visible at high zoom */
 function getHexStyle(claimed, selected, zoom) {
   const weight = zoom >= 17 ? 2.5 : zoom >= 15 ? 1.5 : zoom >= 13 ? 0.9 : 0.5;
   if (selected)  return { color: '#ffffff', fillColor: '#ffffff', fillOpacity: 0.18, weight: weight + 1, dashArray: null };
@@ -31,35 +30,22 @@ function HexLayer({ hexagons, claimedMap, selectedHex, onHexClick, zoom }) {
         const isSelected = selectedHex === h3Index;
         const style = getHexStyle(!!claimed, isSelected, zoom);
         return (
-          <Polygon
-            key={h3Index}
-            positions={positions}
-            pathOptions={style}
-            eventHandlers={{ click: () => onHexClick(h3Index, claimed) }}
-          />
+          <Polygon key={h3Index} positions={positions} pathOptions={style}
+            eventHandlers={{ click: () => onHexClick(h3Index, claimed) }} />
         );
       })}
     </>
   );
 }
 
-/** Blue dot — user's live GPS position */
 function BlueDot({ position }) {
   if (!position) return null;
   return (
     <>
-      {/* Accuracy halo */}
-      <CircleMarker
-        center={position}
-        radius={18}
-        pathOptions={{ color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.12, weight: 0 }}
-      />
-      {/* White ring */}
-      <CircleMarker
-        center={position}
-        radius={9}
-        pathOptions={{ color: '#ffffff', fillColor: '#3B82F6', fillOpacity: 1, weight: 2.5 }}
-      />
+      <CircleMarker center={position} radius={18}
+        pathOptions={{ color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.12, weight: 0 }} />
+      <CircleMarker center={position} radius={9}
+        pathOptions={{ color: '#ffffff', fillColor: '#3B82F6', fillOpacity: 1, weight: 2.5 }} />
     </>
   );
 }
@@ -106,30 +92,27 @@ export default function HexMap() {
   const [flyZoom, setFlyZoom] = useState(17);
   const [zoom, setZoom] = useState(14);
   const [userPosition, setUserPosition] = useState(null);
-  const [mapCenter] = useState([0.3476, 32.5825]); // Kampala default
+  const [mapCenter] = useState([0.3476, 32.5825]);
   const [landmarks, setLandmarks] = useState([]);
   const suggestRef = useRef(null);
 
-  // Load claimed hexagons + all landmarks for autocomplete
   useEffect(() => {
     (async () => {
-      const [addresses, lms] = await Promise.all([
-        base44.entities.SentinelAddress.list('-created_date', 500),
-        base44.entities.LandmarkDescription.list('-created_date', 500),
+      const [{ data: addresses }, { data: lms }] = await Promise.all([
+        supabase.from('sentinel_addresses').select('*').order('created_at', { ascending: false }).limit(500),
+        supabase.from('landmark_descriptions').select('*').order('created_at', { ascending: false }).limit(500),
       ]);
       const map = {};
-      addresses.forEach(a => { if (a.h3_index) map[a.h3_index] = a; });
+      (addresses || []).forEach(a => { if (a.h3_index) map[a.h3_index] = a; });
       setClaimedMap(map);
-      setLandmarks(lms);
+      setLandmarks(lms || []);
     })();
   }, []);
 
-  // Initial hex grid
   useEffect(() => {
     setHexagons(generateVisibleHexagons(mapCenter[0], mapCenter[1], 4));
   }, []);
 
-  // Live GPS blue dot
   useEffect(() => {
     if (!navigator.geolocation) return;
     const watchId = navigator.geolocation.watchPosition(
@@ -140,7 +123,6 @@ export default function HexMap() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // Autocomplete from landmarks as user types
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       setSuggestions([]);
@@ -149,43 +131,25 @@ export default function HexMap() {
     }
     const q = searchQuery.toLowerCase();
     const matches = [];
-
-    // Match landmark descriptions
     landmarks.forEach(lm => {
       const text = lm.ai_normalized || lm.description_text || '';
       const type = lm.landmark_type || '';
       if (text.toLowerCase().includes(q) || type.toLowerCase().includes(q)) {
-        matches.push({
-          label: text || type,
-          sublabel: lm.landmark_type,
-          h3_index: lm.h3_index,
-          sentinel_address_id: lm.sentinel_address_id,
-        });
+        matches.push({ label: text || type, sublabel: lm.landmark_type, h3_index: lm.h3_index, sentinel_address_id: lm.sentinel_address_id });
       }
     });
-
-    // Match claimed address regions
     Object.values(claimedMap).forEach(addr => {
       if (addr.region?.toLowerCase().includes(q) || addr.country?.toLowerCase().includes(q)) {
-        matches.push({
-          label: addr.region || addr.country,
-          sublabel: `${addr.country} · ${addr.sentinel_id || addr.h3_index}`,
-          h3_index: addr.h3_index,
-          sentinel_address_id: addr.id,
-        });
+        matches.push({ label: addr.region || addr.country, sublabel: `${addr.country} · ${addr.sentinel_id || addr.h3_index}`, h3_index: addr.h3_index, sentinel_address_id: addr.id });
       }
     });
-
     setSuggestions(matches.slice(0, 6));
     setShowSuggestions(matches.length > 0);
   }, [searchQuery, landmarks, claimedMap]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (suggestRef.current && !suggestRef.current.contains(e.target)) {
-        setShowSuggestions(false);
-      }
+      if (suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggestions(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -211,9 +175,11 @@ export default function HexMap() {
     setShowSuggestions(false);
     setSearchQuery(sug.label);
     if (sug.h3_index) {
-      const addrData = sug.sentinel_address_id
-        ? await base44.entities.SentinelAddress.filter({ h3_index: sug.h3_index }).then(r => r[0])
-        : null;
+      let addrData = null;
+      if (sug.sentinel_address_id) {
+        const { data } = await supabase.from('sentinel_addresses').select('*').eq('h3_index', sug.h3_index).single();
+        addrData = data;
+      }
       flyToH3(sug.h3_index, addrData);
     }
   };
@@ -242,12 +208,8 @@ export default function HexMap() {
     const cleanId = q.toUpperCase().replace(/[^A-F0-9]/g, '');
     if (cleanId.length === 15) {
       const formatted = `${cleanId.slice(0,4)}-${cleanId.slice(4,8)}-${cleanId.slice(8,12)}-${cleanId.slice(12)}`;
-      const results = await base44.entities.SentinelAddress.filter({ sentinel_id: formatted });
-      if (results.length) {
-        flyToH3(results[0].h3_index, results[0]);
-        setSearching(false);
-        return;
-      }
+      const { data: results } = await supabase.from('sentinel_addresses').select('*').eq('sentinel_id', formatted).limit(1);
+      if (results?.length) { flyToH3(results[0].h3_index, results[0]); setSearching(false); return; }
     }
 
     // 3. Landmark DB
@@ -257,8 +219,8 @@ export default function HexMap() {
       lm.landmark_type?.toLowerCase().includes(q.toLowerCase())
     );
     if (lmMatch) {
-      const addrRes = await base44.entities.SentinelAddress.filter({ h3_index: lmMatch.h3_index });
-      if (addrRes.length) { flyToH3(addrRes[0].h3_index, addrRes[0]); setSearching(false); return; }
+      const { data: addrRes } = await supabase.from('sentinel_addresses').select('*').eq('h3_index', lmMatch.h3_index).limit(1);
+      if (addrRes?.length) { flyToH3(addrRes[0].h3_index, addrRes[0]); setSearching(false); return; }
     }
 
     // 4. Region/district
@@ -268,44 +230,53 @@ export default function HexMap() {
     );
     if (regionMatch) { flyToH3(regionMatch.h3_index, regionMatch); setSearching(false); return; }
 
-    // 5. LLM geocode
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Return the latitude and longitude for this East African location or landmark: "${q}". Focus on Uganda, Kenya, Rwanda, DRC. Only output JSON with lat and lng keys.`,
-      response_json_schema: { type: 'object', properties: { lat: { type: 'number' }, lng: { type: 'number' } } },
-    });
-    if (res?.lat && res?.lng) {
-      const h3 = latLngToCell(res.lat, res.lng, RES);
-      setFlyTo([res.lat, res.lng]); setFlyZoom(15);
-      setSelectedHex(h3);
-      setSelectedData(claimedMap[h3] || { h3_index: h3, status: 'Unclaimed', trust_score: null });
-      setHexagons(generateVisibleHexagons(res.lat, res.lng, 6));
+    // 5. Claude geocode fallback
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 100,
+          messages: [{
+            role: 'user',
+            content: `Return the latitude and longitude for this East African location: "${q}". Focus on Uganda, Kenya, Rwanda, DRC. Respond with ONLY valid JSON like {"lat": 0.3476, "lng": 32.5825} and nothing else.`
+          }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '{}';
+      const res = JSON.parse(text.replace(/```json|```/g, '').trim());
+      if (res?.lat && res?.lng) {
+        const h3 = latLngToCell(res.lat, res.lng, RES);
+        setFlyTo([res.lat, res.lng]); setFlyZoom(15);
+        setSelectedHex(h3);
+        setSelectedData(claimedMap[h3] || { h3_index: h3, status: 'Unclaimed', trust_score: null });
+        setHexagons(generateVisibleHexagons(res.lat, res.lng, 6));
+      }
+    } catch (err) {
+      console.error('Geocode failed:', err);
     }
     setSearching(false);
   };
 
   const TIER_COLOR = {
-    'Visitor': 'text-amber-400',
-    'Resident': 'text-blue-400',
-    'Sentinel Permanent': 'text-emerald-400',
-    'Unclaimed': 'text-slate-500',
+    'Visitor': 'text-amber-400', 'Resident': 'text-blue-400',
+    'Sentinel Permanent': 'text-emerald-400', 'Unclaimed': 'text-slate-500',
   };
 
   return (
     <div className="min-h-screen pt-16 relative" style={{ background: '#0a0a0a' }}>
       <HexBackground opacity={0.05} />
 
-      {/* Search Bar with Autocomplete */}
       <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[500] w-full max-w-md px-4" ref={suggestRef}>
         <div className="flex gap-2 p-2 rounded-2xl border border-zinc-700/60"
           style={{ background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)' }}>
-          <input
-            type="text"
-            value={searchQuery}
+          <input type="text" value={searchQuery}
             onChange={e => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             placeholder="School, shop, district, coords, or Sentinel ID…"
-            className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none text-sm px-2"
-          />
+            className="flex-1 bg-transparent text-white placeholder-slate-600 outline-none text-sm px-2" />
           {searchQuery && (
             <button onClick={() => { setSearchQuery(''); setSuggestions([]); setShowSuggestions(false); }}
               className="text-slate-600 hover:text-slate-400">
@@ -314,20 +285,15 @@ export default function HexMap() {
           )}
           <button onClick={handleSearch} disabled={searching}
             className="px-4 py-2 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all disabled:opacity-40 flex items-center gap-1.5">
-            {searching
-              ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-              : <Search className="w-4 h-4" />}
+            {searching ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Search className="w-4 h-4" />}
             Search
           </button>
         </div>
-
-        {/* Autocomplete Dropdown */}
         {showSuggestions && suggestions.length > 0 && (
           <div className="mt-1 rounded-xl border border-zinc-700/60 overflow-hidden"
             style={{ background: 'rgba(10,10,10,0.97)', backdropFilter: 'blur(12px)' }}>
             {suggestions.map((sug, i) => (
-              <button key={i}
-                onClick={() => handleSuggestionClick(sug)}
+              <button key={i} onClick={() => handleSuggestionClick(sug)}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-left transition-colors border-b border-zinc-800/50 last:border-0">
                 <MapPin className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
                 <div className="min-w-0">
@@ -340,7 +306,6 @@ export default function HexMap() {
         )}
       </div>
 
-      {/* Legend */}
       <div className="absolute bottom-6 left-4 z-[500] flex flex-col gap-1.5 p-3 rounded-xl border border-zinc-700/60"
         style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(10px)' }}>
         <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Legend</p>
@@ -364,7 +329,6 @@ export default function HexMap() {
         )}
       </div>
 
-      {/* Hex Info Panel */}
       {selectedData && (
         <div className="absolute top-36 right-4 z-[500] w-72"
           style={{ background: 'rgba(10,10,10,0.95)', backdropFilter: 'blur(12px)' }}>
@@ -381,13 +345,10 @@ export default function HexMap() {
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
-
             <p className="text-xs text-slate-600 font-mono mb-1 truncate">{selectedData.h3_index}</p>
-
             {selectedData.sentinel_id && (
               <p className="text-base font-bold text-white font-mono tracking-wider mb-2">{selectedData.sentinel_id}</p>
             )}
-
             {selectedData.trust_score != null && (
               <div className="mb-3">
                 <div className="flex justify-between text-xs mb-1">
@@ -396,20 +357,14 @@ export default function HexMap() {
                 </div>
                 <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${selectedData.trust_score}%`,
-                      background: selectedData.trust_score >= 80 ? '#10b981' : selectedData.trust_score >= 50 ? '#4ade80' : '#f59e0b',
-                    }} />
+                    style={{ width: `${selectedData.trust_score}%`, background: selectedData.trust_score >= 80 ? '#10b981' : selectedData.trust_score >= 50 ? '#4ade80' : '#f59e0b' }} />
                 </div>
               </div>
             )}
-
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-500">Status</span>
-                <span className={`font-semibold ${TIER_COLOR[selectedData.status] || 'text-slate-400'}`}>
-                  {selectedData.status || 'Unclaimed'}
-                </span>
+                <span className={`font-semibold ${TIER_COLOR[selectedData.status] || 'text-slate-400'}`}>{selectedData.status || 'Unclaimed'}</span>
               </div>
               {selectedData.vouches_count != null && (
                 <div className="flex justify-between text-xs">
@@ -430,7 +385,6 @@ export default function HexMap() {
                 </div>
               )}
             </div>
-
             {selectedData.status === 'Unclaimed' ? (
               <a href="/get-id"
                 className="mt-3 flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-semibold hover:bg-green-500/20 transition-all">
@@ -446,34 +400,17 @@ export default function HexMap() {
         </div>
       )}
 
-      {/* Map */}
       <div className="absolute inset-0 top-16" style={{ zIndex: 1 }}>
-        <MapContainer
-          center={mapCenter}
-          zoom={zoom}
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-          attributionControl={false}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution=""
-            maxZoom={19}
-          />
+        <MapContainer center={mapCenter} zoom={zoom} style={{ height: '100%', width: '100%' }}
+          zoomControl={false} attributionControl={false}>
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" maxZoom={19} />
           {flyTo && <MapController center={flyTo} zoom={flyZoom} />}
           <DynamicHexLoader onHexagonsChange={setHexagons} onZoomChange={setZoom} />
-          <HexLayer
-            hexagons={hexagons}
-            claimedMap={claimedMap}
-            selectedHex={selectedHex}
-            onHexClick={handleHexClick}
-            zoom={zoom}
-          />
+          <HexLayer hexagons={hexagons} claimedMap={claimedMap} selectedHex={selectedHex} onHexClick={handleHexClick} zoom={zoom} />
           <BlueDot position={userPosition} />
         </MapContainer>
       </div>
 
-      {/* Zoom hint */}
       {zoom < 14 && (
         <div className="absolute bottom-6 right-4 z-[500] p-2.5 rounded-xl border border-zinc-700/60 text-xs text-slate-600 max-w-[140px] text-center"
           style={{ background: 'rgba(10,10,10,0.85)' }}>
