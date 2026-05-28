@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { History, MapPin, ArrowRight, AlertTriangle, CheckCircle, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 
 const TIER_ICON = { Visitor: '👤', Resident: '🏠', 'Sentinel Permanent': '🛡️', Pending: '⏳' };
 const REASON_OPTIONS = ['Relocated', 'Evicted', 'Property Sold', 'Seasonal Move', 'Other'];
@@ -51,8 +51,15 @@ export default function AddressManagement({ address, onDeprecated }) {
 
   useEffect(() => {
     (async () => {
-      const records = await base44.entities.AddressHistory.filter({ user_email: address.user_email }, '-deprecated_at', 20);
-      setHistory(records);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('address_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('deprecated_at', { ascending: false })
+        .limit(20);
+      setHistory(data || []);
       setLoadingHistory(false);
     })();
   }, [address.user_email]);
@@ -61,8 +68,10 @@ export default function AddressManagement({ address, onDeprecated }) {
     if (confirmText !== 'MOVE') return;
     setDeprecating(true);
 
-    // Save to address history
-    await base44.entities.AddressHistory.create({
+    const { data: { user } } = await supabase.auth.getUser();
+
+    await supabase.from('address_history').insert({
+      user_id: user?.id,
       user_email: address.user_email,
       sentinel_address_id: address.id,
       sentinel_id: address.sentinel_id,
@@ -77,10 +86,10 @@ export default function AddressManagement({ address, onDeprecated }) {
       deprecated_at: new Date().toISOString(),
     });
 
-    // Mark the address as deprecated in SentinelAddress
-    await base44.entities.SentinelAddress.update(address.id, {
-      status: 'Deprecated',
-    });
+    await supabase
+      .from('sentinel_addresses')
+      .update({ status: 'Deprecated' })
+      .eq('id', address.id);
 
     setDeprecating(false);
     if (onDeprecated) onDeprecated();
@@ -88,14 +97,12 @@ export default function AddressManagement({ address, onDeprecated }) {
 
   return (
     <div className="space-y-4">
-      {/* Address History */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <History className="w-4 h-4 text-green-400" />
           <h3 className="text-sm font-semibold text-white">Address History</h3>
           <span className="text-xs text-slate-600 ml-auto">{history.length} previous address{history.length !== 1 ? 'es' : ''}</span>
         </div>
-
         {loadingHistory ? (
           <div className="flex justify-center py-4">
             <Loader2 className="w-4 h-4 text-slate-600 animate-spin" />
@@ -111,7 +118,6 @@ export default function AddressManagement({ address, onDeprecated }) {
         )}
       </div>
 
-      {/* Deprecate / Move Address */}
       {address.status !== 'Deprecated' && (
         <div>
           {!showDeprecate ? (
@@ -146,20 +152,15 @@ export default function AddressManagement({ address, onDeprecated }) {
             <div className="p-4 rounded-2xl border border-red-500/30 bg-red-500/5 space-y-3">
               <p className="text-sm font-semibold text-red-400">⚠ Confirm Address Deprecation</p>
               <p className="text-xs text-slate-400">Type <span className="font-mono font-bold text-white">MOVE</span> to confirm. Your trust score and history will be archived — not deleted.</p>
-              <input
-                type="text"
-                placeholder="Type MOVE to confirm"
+              <input type="text" placeholder="Type MOVE to confirm"
                 value={confirmText}
                 onChange={e => setConfirmText(e.target.value.toUpperCase())}
-                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-red-500/40 placeholder-slate-600 font-mono"
-              />
+                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-red-500/40 placeholder-slate-600 font-mono" />
               <div className="flex gap-2">
-                <button onClick={() => { setConfirming(false); setConfirmText(''); }} className="flex-1 py-2 rounded-xl border border-slate-700/50 text-slate-400 text-sm hover:text-white transition-all">Cancel</button>
-                <button
-                  onClick={handleDeprecate}
-                  disabled={confirmText !== 'MOVE' || deprecating}
-                  className="flex-1 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-red-500/30 transition-all"
-                >
+                <button onClick={() => { setConfirming(false); setConfirmText(''); }}
+                  className="flex-1 py-2 rounded-xl border border-slate-700/50 text-slate-400 text-sm hover:text-white transition-all">Cancel</button>
+                <button onClick={handleDeprecate} disabled={confirmText !== 'MOVE' || deprecating}
+                  className="flex-1 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-red-500/30 transition-all">
                   {deprecating ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Archiving...</> : 'Confirm & Archive'}
                 </button>
               </div>
