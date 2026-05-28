@@ -3,7 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell,
 } from 'recharts';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 import {
   Shield, Users, TrendingUp, MapPin, RefreshCw, CheckCircle,
   Star, Layers, Activity, Globe,
@@ -17,12 +17,9 @@ const COUNTRIES = ['Uganda', 'Kenya', 'Rwanda', 'DRC', 'Other'];
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="px-3 py-2 rounded-xl border border-slate-700/50 text-xs"
-      style={{ background: '#0f0f0f' }}>
+    <div className="px-3 py-2 rounded-xl border border-slate-700/50 text-xs" style={{ background: '#0f0f0f' }}>
       <p className="text-slate-400 mb-1">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }}>{p.name}: <strong>{p.value}</strong></p>
-      ))}
+      {payload.map((p, i) => <p key={i} style={{ color: p.color }}>{p.name}: <strong>{p.value}</strong></p>)}
     </div>
   );
 };
@@ -57,14 +54,14 @@ export default function BusinessDashboard({ lang }) {
 
   const loadData = async () => {
     setLoading(true);
-    const [addrs, hist, vs] = await Promise.all([
-      base44.entities.SentinelAddress.list('-created_date', 1000),
-      base44.entities.TrustScoreHistory.list('-created_date', 1000),
-      base44.entities.Vouch.list('-created_date', 500),
+    const [{ data: addrs }, { data: hist }, { data: vs }] = await Promise.all([
+      supabase.from('sentinel_addresses').select('*').order('created_at', { ascending: false }).limit(1000),
+      supabase.from('trust_score_history').select('*').order('created_at', { ascending: false }).limit(1000),
+      supabase.from('vouches').select('*').order('created_at', { ascending: false }).limit(500),
     ]);
-    setAddresses(addrs);
-    setHistory(hist);
-    setVouches(vs);
+    setAddresses(addrs || []);
+    setHistory(hist || []);
+    setVouches(vs || []);
     setLoading(false);
   };
 
@@ -74,24 +71,19 @@ export default function BusinessDashboard({ lang }) {
     </div>
   );
 
-  // ── Derived metrics ──────────────────────────────────────────
   const filtered = activeCountry === 'All' ? addresses : addresses.filter(a => a.country === activeCountry);
-
   const totalIDs = filtered.length;
   const permanentCount = filtered.filter(a => a.status === 'Sentinel Permanent').length;
   const residentCount = filtered.filter(a => a.status === 'Resident').length;
   const avgTrust = filtered.length
-    ? Math.round(filtered.reduce((s, a) => s + (a.trust_score || 30), 0) / filtered.length)
-    : 0;
+    ? Math.round(filtered.reduce((s, a) => s + (a.trust_score || 30), 0) / filtered.length) : 0;
   const verificationRate = totalIDs ? Math.round(((residentCount + permanentCount) / totalIDs) * 100) : 0;
 
-  // Tier distribution
   const tierData = ['Visitor', 'Resident', 'Sentinel Permanent'].map(t => ({
     name: t === 'Sentinel Permanent' ? 'Permanent' : t,
     value: filtered.filter(a => a.status === t).length,
   }));
 
-  // Country breakdown
   const countryData = COUNTRIES.map(c => ({
     country: c,
     total: addresses.filter(a => a.country === c).length,
@@ -99,7 +91,6 @@ export default function BusinessDashboard({ lang }) {
     permanent: addresses.filter(a => a.country === c && a.status === 'Sentinel Permanent').length,
   })).filter(d => d.total > 0);
 
-  // Trust score distribution buckets
   const trustBuckets = [
     { range: '0–30', min: 0, max: 30 },
     { range: '31–50', min: 31, max: 50 },
@@ -111,34 +102,30 @@ export default function BusinessDashboard({ lang }) {
     count: filtered.filter(a => (a.trust_score || 30) >= b.min && (a.trust_score || 30) <= b.max).length,
   }));
 
-  // Verification trend: weekly registrations + vouches (last 8 weeks)
   const now = Date.now();
   const weeklyTrend = Array.from({ length: 8 }, (_, i) => {
     const weekStart = now - (7 - i) * 7 * 86400000;
     const weekEnd = weekStart + 7 * 86400000;
     const label = new Date(weekStart).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
     const newIDs = addresses.filter(a => {
-      const d = new Date(a.created_date).getTime();
+      const d = new Date(a.created_at).getTime();
       return d >= weekStart && d < weekEnd;
     }).length;
     const vouchCount = vouches.filter(v => {
-      const d = new Date(v.created_date).getTime();
+      const d = new Date(v.created_at).getTime();
       return d >= weekStart && d < weekEnd;
     }).length;
     return { week: label, 'New IDs': newIDs, Vouches: vouchCount };
   });
 
-  // Region density (h3_index_res6 = district level)
   const districtMap = {};
   filtered.forEach(a => {
     if (a.h3_index_res6) districtMap[a.h3_index_res6] = (districtMap[a.h3_index_res6] || 0) + 1;
   });
   const topDistricts = Object.entries(districtMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8)
     .map(([hex, count]) => ({ hex: hex.slice(0, 8) + '…', count }));
 
-  // Average trust by country
   const avgTrustByCountry = COUNTRIES.map(c => {
     const group = addresses.filter(a => a.country === c);
     return {
@@ -152,25 +139,18 @@ export default function BusinessDashboard({ lang }) {
     <div className="min-h-screen pt-16" style={{ background: '#060606' }}>
       <HexBackground opacity={0.04} />
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-10 space-y-6">
-
-        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Business Intelligence</h1>
             <p className="text-slate-500 text-sm mt-0.5">Trust scores · Verification trends · Regional coverage across East Africa</p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Country filter */}
             <div className="flex gap-1.5 flex-wrap">
               {['All', ...COUNTRIES].map(c => (
                 <button key={c} onClick={() => setActiveCountry(c)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                    activeCountry === c
-                      ? 'bg-green-500/20 border-green-500/40 text-green-400'
-                      : 'border-slate-700/40 text-slate-500 hover:text-slate-300'
-                  }`}>
-                  {c}
-                </button>
+                    activeCountry === c ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'border-slate-700/40 text-slate-500 hover:text-slate-300'
+                  }`}>{c}</button>
               ))}
             </div>
             <button onClick={loadData}
@@ -180,7 +160,6 @@ export default function BusinessDashboard({ lang }) {
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Total Sentinel IDs" value={totalIDs} icon={Shield} color="text-green-400" />
           <StatCard label="Verification Rate" value={`${verificationRate}%`} icon={CheckCircle} color="text-emerald-400" />
@@ -188,7 +167,6 @@ export default function BusinessDashboard({ lang }) {
           <StatCard label="Sentinel Permanent" value={permanentCount} icon={Activity} color="text-blue-400" />
         </div>
 
-        {/* Verification trend + Tier distribution */}
         <div className="grid md:grid-cols-3 gap-5">
           <div className="md:col-span-2 p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
@@ -217,7 +195,6 @@ export default function BusinessDashboard({ lang }) {
             </ResponsiveContainer>
           </div>
 
-          {/* Tier distribution */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
             <h3 className="text-sm font-semibold text-white mb-5">Residency Tier Distribution</h3>
@@ -240,8 +217,6 @@ export default function BusinessDashboard({ lang }) {
                 );
               })}
             </div>
-
-            {/* Verification rate ring */}
             <div className="mt-6 flex flex-col items-center">
               <div className="relative w-28 h-28">
                 <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
@@ -259,9 +234,7 @@ export default function BusinessDashboard({ lang }) {
           </div>
         </div>
 
-        {/* Regional coverage + Trust distribution */}
         <div className="grid md:grid-cols-2 gap-5">
-          {/* Country breakdown */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
             <h3 className="text-sm font-semibold text-white mb-1">Regional Coverage</h3>
@@ -275,14 +248,10 @@ export default function BusinessDashboard({ lang }) {
                   <Tooltip content={<CustomTooltip />} />
                   <Legend formatter={v => <span style={{ fontSize: 11, color: '#64748b' }}>{v}</span>} />
                   <Bar dataKey="total" name="Total" radius={[3, 3, 0, 0]}>
-                    {countryData.map((d) => (
-                      <Cell key={d.country} fill={COUNTRY_COLORS[d.country] || '#64748b'} fillOpacity={0.4} />
-                    ))}
+                    {countryData.map((d) => <Cell key={d.country} fill={COUNTRY_COLORS[d.country] || '#64748b'} fillOpacity={0.4} />)}
                   </Bar>
                   <Bar dataKey="verified" name="Verified" radius={[3, 3, 0, 0]}>
-                    {countryData.map((d) => (
-                      <Cell key={d.country} fill={COUNTRY_COLORS[d.country] || '#64748b'} fillOpacity={0.9} />
-                    ))}
+                    {countryData.map((d) => <Cell key={d.country} fill={COUNTRY_COLORS[d.country] || '#64748b'} fillOpacity={0.9} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -294,7 +263,6 @@ export default function BusinessDashboard({ lang }) {
             )}
           </div>
 
-          {/* Trust score distribution */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
             <h3 className="text-sm font-semibold text-white mb-1">Trust Score Distribution</h3>
@@ -316,9 +284,7 @@ export default function BusinessDashboard({ lang }) {
           </div>
         </div>
 
-        {/* Avg trust by country + Top density zones */}
         <div className="grid md:grid-cols-2 gap-5">
-          {/* Avg trust by country */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
             <h3 className="text-sm font-semibold text-white mb-5">Average Trust Score by Country</h3>
@@ -340,7 +306,6 @@ export default function BusinessDashboard({ lang }) {
             </div>
           </div>
 
-          {/* Top density zones */}
           <div className="p-6 rounded-2xl border border-slate-800/60"
             style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
             <h3 className="text-sm font-semibold text-white mb-1">Top Density Zones</h3>
@@ -369,7 +334,6 @@ export default function BusinessDashboard({ lang }) {
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
