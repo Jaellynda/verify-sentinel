@@ -1,14 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { QrCode, Camera, X, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/base44Client';
 
-/**
- * QRVouchScanner — Resident-tier+ users scan another user's QR code to vouch.
- * Uses the browser's camera via getUserMedia + a simple QR decode approach.
- * Falls back to manual ID entry if camera is unavailable.
- */
 export default function QRVouchScanner({ onVouchComplete }) {
-  const [mode, setMode] = useState('idle'); // idle | scanning | manual | processing | done | error
+  const [mode, setMode] = useState('idle');
   const [manualId, setManualId] = useState('');
   const [message, setMessage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -18,7 +13,6 @@ export default function QRVouchScanner({ onVouchComplete }) {
   const streamRef = useRef(null);
   const intervalRef = useRef(null);
 
-  // Install jsQR dynamically (it's not in the installed packages list so we load from CDN)
   useEffect(() => {
     if (!window.jsQR) {
       const script = document.createElement('script');
@@ -49,7 +43,6 @@ export default function QRVouchScanner({ onVouchComplete }) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       }
-      // Poll for QR codes every 300ms
       intervalRef.current = setInterval(() => {
         if (!videoRef.current || !window.jsQR) return;
         const canvas = document.createElement('canvas');
@@ -74,7 +67,6 @@ export default function QRVouchScanner({ onVouchComplete }) {
 
   const processScannedData = async (raw) => {
     stopCamera();
-    // QR encodes the sentinel_id directly (or as a JSON with sentinel_id key)
     let sid = raw.trim();
     try { const parsed = JSON.parse(raw); sid = parsed.sentinel_id || sid; } catch {}
     setScannedId(sid);
@@ -85,25 +77,41 @@ export default function QRVouchScanner({ onVouchComplete }) {
   const performVouch = async (sid) => {
     setMode('processing');
     setErrorMsg('');
-    const user = await base44.auth.me();
 
-    // Check voucher is Resident or higher
-    const myAddrs = await base44.entities.SentinelAddress.filter({ user_email: user.email }, '-created_date', 1);
-    if (!myAddrs.length) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setErrorMsg('You must be logged in to vouch.');
+      setMode('error');
+      return;
+    }
+
+    // Check voucher has an address and is Resident+
+    const { data: myAddrs } = await supabase
+      .from('sentinel_addresses')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!myAddrs?.length) {
       setErrorMsg('You need a Sentinel Address to vouch for others.');
       setMode('error');
       return;
     }
-    const myAddr = myAddrs[0];
-    if (myAddr.status === 'Visitor') {
+    if (myAddrs[0].status === 'Visitor') {
       setErrorMsg('Only Resident-tier or above can vouch for others. Keep checking in to level up.');
       setMode('error');
       return;
     }
 
-    // Find target
-    const targets = await base44.entities.SentinelAddress.filter({ sentinel_id: sid });
-    if (!targets.length) {
+    // Find target address
+    const { data: targets } = await supabase
+      .from('sentinel_addresses')
+      .select('*')
+      .eq('sentinel_id', sid)
+      .limit(1);
+
+    if (!targets?.length) {
       setErrorMsg(`Sentinel ID "${sid}" not found. Verify the QR code and try again.`);
       setMode('error');
       return;
@@ -111,17 +119,16 @@ export default function QRVouchScanner({ onVouchComplete }) {
     const target = targets[0];
     setTargetInfo(target);
 
-    // Prevent self-vouch
-    if (target.user_email === user.email) {
+    if (target.user_id === user.id) {
       setErrorMsg('You cannot vouch for your own address.');
       setMode('error');
       return;
     }
 
     // Create vouch record
-    await base44.entities.Vouch.create({
+    await supabase.from('vouches').insert({
+      voucher_id: user.id,
       voucher_email: user.email,
-      voucher_name: user.full_name,
       target_sentinel_id: sid,
       target_h3_index: target.h3_index,
       target_address_id: target.id,
@@ -129,16 +136,18 @@ export default function QRVouchScanner({ onVouchComplete }) {
       status: 'Confirmed',
     });
 
-    // Update target trust score immediately
+    // Update target trust score
     const newVouches = (target.vouches_count || 0) + 1;
     const newScore = Math.min(100, (target.trust_score || 30) + 5);
-    await base44.entities.SentinelAddress.update(target.id, {
-      vouches_count: newVouches,
-      trust_score: newScore,
-    });
 
-    await base44.entities.TrustScoreHistory.create({
+    await supabase
+      .from('sentinel_addresses')
+      .update({ vouches_count: newVouches, trust_score: newScore })
+      .eq('id', target.id);
+
+    await supabase.from('trust_score_history').insert({
       sentinel_address_id: target.id,
+      user_id: target.user_id,
       user_email: target.user_email,
       score: newScore,
       event: 'vouch_received',
@@ -161,7 +170,6 @@ export default function QRVouchScanner({ onVouchComplete }) {
 
   return (
     <div className="rounded-2xl border border-slate-700/40 bg-slate-900/50 overflow-hidden">
-      {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700/30">
         <QrCode className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-white">QR Vouch Scanner</span>
@@ -187,7 +195,6 @@ export default function QRVouchScanner({ onVouchComplete }) {
           <div className="space-y-3">
             <div className="relative rounded-xl overflow-hidden bg-black" style={{ height: 200 }}>
               <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-              {/* Scan overlay */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-40 h-40 border-2 border-blue-400/60 rounded-xl" style={{ boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
               </div>
@@ -204,20 +211,12 @@ export default function QRVouchScanner({ onVouchComplete }) {
         {mode === 'manual' && (
           <div className="space-y-3">
             {errorMsg && <p className="text-xs text-amber-400">{errorMsg}</p>}
-            <input
-              type="text"
-              placeholder="e.g. 8921-F3A2-B100-9E7"
-              value={manualId}
-              onChange={e => setManualId(e.target.value.toUpperCase())}
-              className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600 font-mono"
-            />
-            <input
-              type="text"
-              placeholder="Optional vouch message"
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600"
-            />
+            <input type="text" placeholder="e.g. 8921-F3A2-B100-9E7"
+              value={manualId} onChange={e => setManualId(e.target.value.toUpperCase())}
+              className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600 font-mono" />
+            <input type="text" placeholder="Optional vouch message"
+              value={message} onChange={e => setMessage(e.target.value)}
+              className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-blue-500/60 placeholder-slate-600" />
             <div className="flex gap-2">
               <button onClick={reset} className="flex-1 py-2 rounded-xl border border-slate-700/40 text-slate-400 text-sm hover:text-white transition-all">Cancel</button>
               <button onClick={() => performVouch(manualId)} disabled={!manualId.trim()}
