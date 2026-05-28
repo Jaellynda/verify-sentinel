@@ -1,6 +1,3 @@
-Go to `src/pages/HelpSupport.jsx` on GitHub, replace just the `import` line and `handleSubmit` function — everything else stays identical:
-
-```jsx
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, MessageSquare, Send, CheckCircle, Loader2, Shield } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
@@ -177,6 +174,3 @@ export default function HelpSupport({ lang }) {
     </div>
   );
 }
-```
-
-Commit and paste the next error.
