@@ -1,6 +1,9 @@
+Go to `src/components/PhysicalAnchors.jsx` on GitHub, replace entirely with:
+
+```jsx
 import { useState } from 'react';
-import { Pencil, Trash2, X, Save, ChevronDown } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { Pencil, Trash2, X, Save } from 'lucide-react';
+import { supabase } from '@/api/base44Client';
 
 const LANDMARK_ICONS = {
   'Kiosk': '🏪', 'Petrol Station': '⛽', 'School': '🏫',
@@ -24,15 +27,16 @@ function LandmarkEditForm({ lm, onSave, onCancel }) {
 
   const handleSave = async () => {
     setSaving(true);
-    await base44.entities.LandmarkDescription.update(lm.id, {
+    const updates = {
       landmark_type: form.landmark_type,
       direction: form.direction,
       distance_meters: form.distance_meters ? parseFloat(form.distance_meters) : null,
       description_text: form.description_text,
       is_primary: form.is_primary,
-    });
+    };
+    await supabase.from('landmark_descriptions').update(updates).eq('id', lm.id);
     setSaving(false);
-    onSave({ ...lm, ...form, distance_meters: form.distance_meters ? parseFloat(form.distance_meters) : null });
+    onSave({ ...lm, ...updates });
   };
 
   return (
@@ -40,65 +44,48 @@ function LandmarkEditForm({ lm, onSave, onCancel }) {
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-xs text-slate-500 mb-1 block">Type</label>
-          <select
-            value={form.landmark_type}
+          <select value={form.landmark_type}
             onChange={e => setForm(f => ({ ...f, landmark_type: e.target.value }))}
-            className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none"
-          >
+            className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none">
             {LANDMARK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
           <label className="text-xs text-slate-500 mb-1 block">Direction</label>
-          <select
-            value={form.direction}
+          <select value={form.direction}
             onChange={e => setForm(f => ({ ...f, direction: e.target.value }))}
-            className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none"
-          >
+            className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none">
             {DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
       </div>
       <div>
         <label className="text-xs text-slate-500 mb-1 block">Distance (meters)</label>
-        <input
-          type="number"
-          value={form.distance_meters}
+        <input type="number" value={form.distance_meters}
           onChange={e => setForm(f => ({ ...f, distance_meters: e.target.value }))}
           placeholder="e.g. 50"
-          className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none"
-        />
+          className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none" />
       </div>
       <div>
         <label className="text-xs text-slate-500 mb-1 block">Description</label>
-        <textarea
-          value={form.description_text}
+        <textarea value={form.description_text}
           onChange={e => setForm(f => ({ ...f, description_text: e.target.value }))}
           rows={2}
-          className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none resize-none"
-        />
+          className="w-full bg-slate-800 border border-slate-700/60 text-white text-xs rounded-lg px-2 py-1.5 outline-none resize-none" />
       </div>
       <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={form.is_primary}
+        <input type="checkbox" checked={form.is_primary}
           onChange={e => setForm(f => ({ ...f, is_primary: e.target.checked }))}
-          className="accent-emerald-400"
-        />
+          className="accent-emerald-400" />
         <span className="text-xs text-slate-400">Mark as Primary Landmark</span>
       </label>
       <div className="flex gap-2">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold transition-all"
-        >
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold transition-all">
           <Save className="w-3 h-3" /> {saving ? 'Saving…' : 'Save'}
         </button>
-        <button
-          onClick={onCancel}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium transition-all"
-        >
+        <button onClick={onCancel}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium transition-all">
           <X className="w-3 h-3" /> Cancel
         </button>
       </div>
@@ -112,17 +99,10 @@ export default function PhysicalAnchors({ landmarks: initialLandmarks, onChanged
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
-  // Keep in sync if parent reloads
-  useState(() => { setLandmarks(initialLandmarks); }, [initialLandmarks]);
-
   const handleDelete = async (id) => {
     setDeletingId(id);
     setConfirmDeleteId(null);
-    try {
-      await base44.entities.LandmarkDescription.delete(id);
-    } catch {
-      // Already deleted or not found — treat as success
-    }
+    await supabase.from('landmark_descriptions').delete().eq('id', id);
     setLandmarks(prev => prev.filter(l => l.id !== id));
     setDeletingId(null);
     onChanged();
@@ -142,11 +122,7 @@ export default function PhysicalAnchors({ landmarks: initialLandmarks, onChanged
         {landmarks.map((lm) => (
           <div key={lm.id}>
             {editingId === lm.id ? (
-              <LandmarkEditForm
-                lm={lm}
-                onSave={handleSaved}
-                onCancel={() => setEditingId(null)}
-              />
+              <LandmarkEditForm lm={lm} onSave={handleSaved} onCancel={() => setEditingId(null)} />
             ) : (
               <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
                 <div className="w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-lg flex-shrink-0">
@@ -168,35 +144,22 @@ export default function PhysicalAnchors({ landmarks: initialLandmarks, onChanged
                   {confirmDeleteId === lm.id ? (
                     <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30">
                       <span className="text-xs text-red-400">Delete?</span>
-                      <button
-                        onClick={() => handleDelete(lm.id)}
-                        disabled={deletingId === lm.id}
-                        className="text-xs text-red-400 font-semibold hover:text-red-300 transition-colors"
-                      >
+                      <button onClick={() => handleDelete(lm.id)} disabled={deletingId === lm.id}
+                        className="text-xs text-red-400 font-semibold hover:text-red-300 transition-colors">
                         {deletingId === lm.id ? '…' : 'Yes'}
                       </button>
                       <span className="text-slate-600 text-xs">·</span>
-                      <button
-                        onClick={() => setConfirmDeleteId(null)}
-                        className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
-                      >
-                        No
-                      </button>
+                      <button onClick={() => setConfirmDeleteId(null)}
+                        className="text-xs text-slate-400 hover:text-slate-200 transition-colors">No</button>
                     </div>
                   ) : (
                     <>
-                      <button
-                        onClick={() => setEditingId(lm.id)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                        title="Edit"
-                      >
+                      <button onClick={() => setEditingId(lm.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(lm.id)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                        title="Delete"
-                      >
+                      <button onClick={() => setConfirmDeleteId(lm.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </>
@@ -210,3 +173,6 @@ export default function PhysicalAnchors({ landmarks: initialLandmarks, onChanged
     </div>
   );
 }
+```
+
+Commit and paste the next error.
