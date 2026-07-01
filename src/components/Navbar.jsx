@@ -1,12 +1,19 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Shield, Menu, X, Wifi, WifiOff } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Shield, Menu, X, Wifi, WifiOff, LogOut } from 'lucide-react';
 import { LANGUAGES } from '../lib/i18n';
+import { supabase } from '@/api/base44Client';
 
 export default function Navbar({ lang, onLangChange }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isOnline] = useState(navigator.onLine);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   const navItems = [
     { path: '/', label: 'Home' },
@@ -24,6 +31,7 @@ export default function Navbar({ lang, onLangChange }) {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/60"
         style={{ background: 'rgba(4,8,18,0.97)', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="relative">
@@ -52,6 +60,7 @@ export default function Navbar({ lang, onLangChange }) {
 
           {/* Right Controls */}
           <div className="flex items-center gap-3">
+
             {/* Offline Indicator */}
             <div className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
               isOnline
@@ -67,12 +76,19 @@ export default function Navbar({ lang, onLangChange }) {
             <select
               value={lang}
               onChange={e => onLangChange(e.target.value)}
-              className="bg-slate-800/80 border border-blue-900/50 text-white text-xs rounded px-2 py-1 outline-none cursor-pointer"
-            >
+              className="bg-slate-800/80 border border-blue-900/50 text-white text-xs rounded px-2 py-1 outline-none cursor-pointer">
               {Object.entries(LANGUAGES).map(([code, info]) => (
                 <option key={code} value={code}>{info.flag} {info.name}</option>
               ))}
             </select>
+
+            {/* Sign Out — desktop */}
+            <button
+              onClick={handleSignOut}
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-all text-xs font-medium">
+              <LogOut className="w-3 h-3" />
+              Sign Out
+            </button>
 
             {/* Mobile menu button */}
             <button onClick={() => setMenuOpen(!menuOpen)}
@@ -104,7 +120,16 @@ export default function Navbar({ lang, onLangChange }) {
                   {item.label}
                 </Link>
               ))}
+
+              {/* Sign Out — mobile */}
+              <button
+                onClick={() => { setMenuOpen(false); handleSignOut(); }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/5 transition-all mt-1">
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
             </div>
+
             <div className="mt-4 pt-4 border-t border-slate-700/50 flex items-center justify-between">
               <div className={`flex items-center gap-1.5 text-xs ${isOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
                 {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
