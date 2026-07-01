@@ -1,339 +1,551 @@
 import { useState, useEffect } from 'react';
-import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell,
-} from 'recharts';
 import { supabase } from '@/api/base44Client';
 import {
-  Shield, Users, TrendingUp, MapPin, RefreshCw, CheckCircle,
-  Star, Layers, Activity, Globe,
+  Search, Shield, CheckCircle, Clock, XCircle, MapPin, Copy,
+  TrendingUp, Users, FileText, Key, Eye, EyeOff, Download,
+  AlertTriangle, ChevronRight, Building2, Zap, Globe, Lock,
+  BarChart2, RefreshCw, ExternalLink, Info
 } from 'lucide-react';
 import HexBackground from '../components/HexBackground';
+import TrustArc from '../components/TrustArc';
 
-const TIER_COLORS = { 'Visitor': '#f59e0b', 'Resident': '#3b82f6', 'Sentinel Permanent': '#4ade80' };
-const COUNTRY_COLORS = { Uganda: '#4ade80', Kenya: '#3b82f6', Rwanda: '#a855f7', DRC: '#f59e0b', Other: '#64748b' };
-const COUNTRIES = ['Uganda', 'Kenya', 'Rwanda', 'DRC', 'Other'];
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
+// ─── TRUST SCORE RING ────────────────────────────────────────────────────────
+function TrustRing({ score }) {
+  const r = 36;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.min(100, Math.max(0, score));
+  const dash = (pct / 100) * circ;
+  const color = score >= 75 ? '#10B981' : score >= 50 ? '#3B82F6' : '#F59E0B';
   return (
-    <div className="px-3 py-2 rounded-xl border border-slate-700/50 text-xs" style={{ background: '#0f0f0f' }}>
-      <p className="text-slate-400 mb-1">{label}</p>
-      {payload.map((p, i) => <p key={i} style={{ color: p.color }}>{p.name}: <strong>{p.value}</strong></p>)}
-    </div>
-  );
-};
-
-function StatCard({ label, value, icon: IconComp, color, trend }) {
-  const Icon = IconComp;
-  return (
-    <div className="p-5 rounded-2xl border border-slate-800/60"
-      style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
-      <div className="flex items-center justify-between mb-3">
-        <Icon className={`w-4 h-4 ${color}`} />
-        {trend != null && (
-          <span className={`text-xs font-mono ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {trend >= 0 ? '↑' : '↓'}{Math.abs(trend)}%
-          </span>
-        )}
+    <div className="relative w-24 h-24 flex items-center justify-center">
+      <svg viewBox="0 0 88 88" className="w-24 h-24 -rotate-90 absolute">
+        <circle cx="44" cy="44" r={r} fill="none" stroke="#1E293B" strokeWidth="7" />
+        <circle cx="44" cy="44" r={r} fill="none" stroke={color} strokeWidth="7"
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 6px ${color}80)` }} />
+      </svg>
+      <div className="text-center z-10">
+        <p className="text-xl font-black" style={{ color }}>{score}</p>
+        <p className="text-xs text-slate-500 leading-none">/ 100</p>
       </div>
-      <p className={`text-3xl font-bold font-mono ${color}`}>{value}</p>
-      <p className="text-xs text-slate-500 mt-1">{label}</p>
     </div>
   );
 }
 
-export default function BusinessDashboard({ lang }) {
-  const [addresses, setAddresses] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [vouches, setVouches] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeCountry, setActiveCountry] = useState('All');
-
-  useEffect(() => { loadData(); }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const [{ data: addrs }, { data: hist }, { data: vs }] = await Promise.all([
-      supabase.from('sentinel_addresses').select('*').order('created_at', { ascending: false }).limit(1000),
-      supabase.from('trust_score_history').select('*').order('created_at', { ascending: false }).limit(1000),
-      supabase.from('vouches').select('*').order('created_at', { ascending: false }).limit(500),
-    ]);
-    setAddresses(addrs || []);
-    setHistory(hist || []);
-    setVouches(vs || []);
-    setLoading(false);
+// ─── TIER BADGE ──────────────────────────────────────────────────────────────
+function TierBadge({ tier }) {
+  const config = {
+    'Visitor':           { color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   icon: '👤', label: 'Visitor' },
+    'Resident':          { color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/30',    icon: '🏠', label: 'Resident' },
+    'Sentinel Permanent':{ color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: '🛡️', label: 'Sentinel Permanent' },
   };
+  const c = config[tier] || config['Visitor'];
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${c.bg} ${c.border} ${c.color}`}>
+      <span>{c.icon}</span>{c.label}
+    </span>
+  );
+}
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#060606' }}>
-      <div className="w-6 h-6 border-2 border-green-500/30 border-t-green-500 rounded-full animate-spin" />
+// ─── RISK SIGNAL ─────────────────────────────────────────────────────────────
+function RiskSignal({ score, nights, vouches }) {
+  const risk = score >= 70 && nights >= 3 ? 'LOW'
+    : score >= 50 ? 'MEDIUM' : 'HIGH';
+  const config = {
+    LOW:    { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', label: 'Low Risk' },
+    MEDIUM: { color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   label: 'Medium Risk' },
+    HIGH:   { color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/30',     label: 'High Risk' },
+  };
+  const c = config[risk];
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${c.bg} ${c.border}`}>
+      <div className={`w-2 h-2 rounded-full ${risk === 'LOW' ? 'bg-emerald-400' : risk === 'MEDIUM' ? 'bg-amber-400' : 'bg-red-400'}`} />
+      <span className={`text-xs font-bold ${c.color}`}>{c.label}</span>
     </div>
   );
+}
 
-  const filtered = activeCountry === 'All' ? addresses : addresses.filter(a => a.country === activeCountry);
-  const totalIDs = filtered.length;
-  const permanentCount = filtered.filter(a => a.status === 'Sentinel Permanent').length;
-  const residentCount = filtered.filter(a => a.status === 'Resident').length;
-  const avgTrust = filtered.length
-    ? Math.round(filtered.reduce((s, a) => s + (a.trust_score || 30), 0) / filtered.length) : 0;
-  const verificationRate = totalIDs ? Math.round(((residentCount + permanentCount) / totalIDs) * 100) : 0;
+// ─── VERIFICATION RESULT CARD ─────────────────────────────────────────────────
+function VerificationCard({ result, landmarks, onClose }) {
+  const [copied, setCopied] = useState(false);
 
-  const tierData = ['Visitor', 'Resident', 'Sentinel Permanent'].map(t => ({
-    name: t === 'Sentinel Permanent' ? 'Permanent' : t,
-    value: filtered.filter(a => a.status === t).length,
-  }));
-
-  const countryData = COUNTRIES.map(c => ({
-    country: c,
-    total: addresses.filter(a => a.country === c).length,
-    verified: addresses.filter(a => a.country === c && (a.status === 'Resident' || a.status === 'Sentinel Permanent')).length,
-    permanent: addresses.filter(a => a.country === c && a.status === 'Sentinel Permanent').length,
-  })).filter(d => d.total > 0);
-
-  const trustBuckets = [
-    { range: '0–30', min: 0, max: 30 },
-    { range: '31–50', min: 31, max: 50 },
-    { range: '51–70', min: 51, max: 70 },
-    { range: '71–90', min: 71, max: 90 },
-    { range: '91–100', min: 91, max: 100 },
-  ].map(b => ({
-    range: b.range,
-    count: filtered.filter(a => (a.trust_score || 30) >= b.min && (a.trust_score || 30) <= b.max).length,
-  }));
-
-  const now = Date.now();
-  const weeklyTrend = Array.from({ length: 8 }, (_, i) => {
-    const weekStart = now - (7 - i) * 7 * 86400000;
-    const weekEnd = weekStart + 7 * 86400000;
-    const label = new Date(weekStart).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
-    const newIDs = addresses.filter(a => {
-      const d = new Date(a.created_at).getTime();
-      return d >= weekStart && d < weekEnd;
-    }).length;
-    const vouchCount = vouches.filter(v => {
-      const d = new Date(v.created_at).getTime();
-      return d >= weekStart && d < weekEnd;
-    }).length;
-    return { week: label, 'New IDs': newIDs, Vouches: vouchCount };
-  });
-
-  const districtMap = {};
-  filtered.forEach(a => {
-    if (a.h3_index_res6) districtMap[a.h3_index_res6] = (districtMap[a.h3_index_res6] || 0) + 1;
-  });
-  const topDistricts = Object.entries(districtMap)
-    .sort((a, b) => b[1] - a[1]).slice(0, 8)
-    .map(([hex, count]) => ({ hex: hex.slice(0, 8) + '…', count }));
-
-  const avgTrustByCountry = COUNTRIES.map(c => {
-    const group = addresses.filter(a => a.country === c);
-    return {
-      country: c,
-      avgTrust: group.length ? Math.round(group.reduce((s, a) => s + (a.trust_score || 30), 0) / group.length) : 0,
-      count: group.length,
-    };
-  }).filter(d => d.count > 0);
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="min-h-screen pt-16" style={{ background: '#060606' }}>
-      <HexBackground opacity={0.04} />
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-10 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Business Intelligence</h1>
-            <p className="text-slate-500 text-sm mt-0.5">Trust scores · Verification trends · Regional coverage across East Africa</p>
+    <div className="rounded-2xl border border-blue-500/20 overflow-hidden"
+      style={{ background: 'rgba(10,15,30,0.95)', backdropFilter: 'blur(20px)' }}>
+
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/60">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+            <Shield className="w-4 h-4 text-blue-400" />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1.5 flex-wrap">
-              {['All', ...COUNTRIES].map(c => (
-                <button key={c} onClick={() => setActiveCountry(c)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                    activeCountry === c ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'border-slate-700/40 text-slate-500 hover:text-slate-300'
-                  }`}>{c}</button>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Verification Result</p>
+            <p className="text-white font-mono font-bold text-sm">{result.sentinel_id}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <RiskSignal score={result.trust_score} nights={result.persistence_nights} vouches={result.vouches_count} />
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 transition-colors text-xs">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6 grid md:grid-cols-3 gap-6">
+
+        {/* Trust Score */}
+        <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-900/60 border border-slate-800/60">
+          <TrustRing score={result.trust_score || 30} />
+          <p className="text-xs text-slate-500 mt-2 text-center">Trust Score</p>
+          <TierBadge tier={result.status} />
+        </div>
+
+        {/* Identity Signals */}
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Identity Signals</p>
+
+          {[
+            { label: 'Check-ins', value: `${result.persistence_nights || 0} nights`, icon: '🌙',
+              note: result.persistence_nights >= 3 ? 'Residency confirmed' : 'Building residency' },
+            { label: 'Neighbor Vouches', value: `${result.vouches_count || 0}`, icon: '🤝',
+              note: result.vouches_count >= 2 ? 'Community verified' : 'Limited social proof' },
+            { label: 'Residency Type', value: result.residency_type || 'Owner', icon: '🏗️', note: '' },
+            { label: 'Country', value: result.country || '—', icon: '🌍', note: '' },
+          ].map(({ label, value, icon, note }) => (
+            <div key={label} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/40">
+              <span className="text-base w-6 text-center">{icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-slate-500">{label}</p>
+                <p className="text-sm text-white font-medium">{value}</p>
+                {note && <p className="text-xs text-slate-600">{note}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Location Data */}
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Location Data</p>
+
+          <div className="p-3 rounded-lg bg-slate-900/40 border border-slate-800/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500">H3 Hex Index</p>
+              <button onClick={() => handleCopy(result.h3_index)}
+                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                {copied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <p className="text-xs text-white font-mono break-all">{result.h3_index}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <a href={result.google_maps_link} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all">
+              <ExternalLink className="w-3 h-3" /> Google Maps
+            </a>
+            <a href={result.apple_maps_link} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700/40 text-slate-400 text-xs font-medium hover:text-white transition-all">
+              <ExternalLink className="w-3 h-3" /> Apple Maps
+            </a>
+          </div>
+
+          {result.last_checkin && (
+            <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/40">
+              <p className="text-xs text-slate-500">Last Check-in</p>
+              <p className="text-sm text-white">{new Date(result.last_checkin).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Last-mile blueprint */}
+      {landmarks.length > 0 && (
+        <div className="px-6 pb-6">
+          <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="w-4 h-4 text-blue-400" />
+              <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Last-Mile Delivery Blueprint</p>
+              <span className="ml-auto text-xs text-slate-600">{landmarks.length} anchor{landmarks.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="space-y-2">
+              {landmarks.map((lm, i) => (
+                <div key={i} className="flex items-start gap-3 p-2.5 rounded-lg bg-slate-900/60">
+                  <span className="text-base mt-0.5">
+                    {lm.landmark_type === 'Kiosk' ? '🏪' : lm.landmark_type === 'School' ? '🏫' :
+                     lm.landmark_type === 'Church/Mosque' ? '🕌' : lm.landmark_type === 'Market' ? '🛒' :
+                     lm.landmark_type === 'Petrol Station' ? '⛽' : '📍'}
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold text-white">{lm.ai_normalized || lm.description_text}</p>
+                    <p className="text-xs text-slate-500">{lm.direction} of {lm.landmark_type}{lm.distance_meters ? ` · ~${lm.distance_meters}m` : ''}</p>
+                    {lm.is_primary && <span className="text-xs text-blue-400">Primary anchor</span>}
+                  </div>
+                </div>
               ))}
             </div>
-            <button onClick={loadData}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700/50 text-slate-400 text-sm hover:text-white transition-all">
+          </div>
+        </div>
+      )}
+
+      {/* Decision footer */}
+      <div className="px-6 pb-6">
+        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-700/40">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 font-semibold">KYC Decision Support</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Address Proof', pass: (result.persistence_nights || 0) >= 1 },
+              { label: 'Residency Confirmed', pass: (result.persistence_nights || 0) >= 3 },
+              { label: 'Community Verified', pass: (result.vouches_count || 0) >= 1 },
+            ].map(({ label, pass }) => (
+              <div key={label} className={`flex items-center gap-2 p-2.5 rounded-lg border ${
+                pass ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-slate-800/40 border-slate-700/30'
+              }`}>
+                {pass
+                  ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                  : <Clock className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />}
+                <span className={`text-xs font-medium ${pass ? 'text-emerald-400' : 'text-slate-600'}`}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+export default function BusinessDashboard({ lang }) {
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [result, setResult] = useState(null);
+  const [landmarks, setLandmarks] = useState([]);
+  const [notFound, setNotFound] = useState(false);
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [copied, setCopied] = useState('');
+  const [stats, setStats] = useState({ total: 0, verified: 0, residents: 0, permanent: 0 });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [orgName, setOrgName] = useState('Your Organization');
+
+  const DEMO_API_KEY = 'vs_live_sk_ug_7f3a9b2c1e4d8f6a0b5c3d7e2f1a9b4c';
+
+  useEffect(() => {
+    loadStats();
+    loadHistory();
+  }, []);
+
+  const loadStats = async () => {
+    setLoadingStats(true);
+    const { data } = await supabase.from('sentinel_addresses').select('status');
+    if (data) {
+      setStats({
+        total: data.length,
+        verified: data.filter(a => a.status !== 'Visitor').length,
+        residents: data.filter(a => a.status === 'Resident').length,
+        permanent: data.filter(a => a.status === 'Sentinel Permanent').length,
+      });
+    }
+    setLoadingStats(false);
+  };
+
+  const loadHistory = () => {
+    const saved = localStorage.getItem('vs_search_history');
+    if (saved) {
+      try { setSearchHistory(JSON.parse(saved)); } catch {}
+    }
+  };
+
+  const handleSearch = async () => {
+    const cleaned = query.trim().toUpperCase();
+    if (!cleaned) return;
+    setSearching(true);
+    setResult(null);
+    setNotFound(false);
+    setLandmarks([]);
+
+    const { data: records } = await supabase
+      .from('sentinel_addresses')
+      .select('*')
+      .eq('sentinel_id', cleaned)
+      .limit(1);
+
+    if (!records?.length) {
+      setNotFound(true);
+    } else {
+      const addr = records[0];
+      setResult(addr);
+
+      const { data: lms } = await supabase
+        .from('landmark_descriptions')
+        .select('*')
+        .eq('h3_index', addr.h3_index);
+      setLandmarks(lms || []);
+
+      const entry = { id: cleaned, status: addr.status, score: addr.trust_score, time: new Date().toISOString() };
+      const newHistory = [entry, ...searchHistory.filter(h => h.id !== cleaned)].slice(0, 10);
+      setSearchHistory(newHistory);
+      localStorage.setItem('vs_search_history', JSON.stringify(newHistory));
+    }
+    setSearching(false);
+  };
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') handleSearch(); };
+
+  const handleCopy = (text, key) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(''), 2000);
+  };
+
+  const handleInput = (e) => {
+    let val = e.target.value.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
+    if (val.length > 15) val = val.slice(0, 15);
+    const parts = [val.slice(0,4), val.slice(4,8), val.slice(8,12), val.slice(12,15)].filter(Boolean);
+    setQuery(parts.join('-'));
+  };
+
+  return (
+    <div className="min-h-screen pt-16" style={{ background: '#060B13' }}>
+      <HexBackground opacity={0.04} />
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Building2 className="w-4 h-4 text-blue-400" />
+              <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Enterprise Dashboard</span>
+            </div>
+            <h1 className="text-2xl font-bold text-white">KYC Verification Console</h1>
+            <p className="text-slate-500 text-sm mt-0.5">Powered by Verify Sentinel — TEGU Systems</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs text-emerald-400 font-medium">API Connected</span>
+            </div>
+            <button onClick={loadStats} className="p-2 rounded-lg border border-slate-700/50 text-slate-500 hover:text-white transition-colors">
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
+        {/* KPI Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Sentinel IDs" value={totalIDs} icon={Shield} color="text-green-400" />
-          <StatCard label="Verification Rate" value={`${verificationRate}%`} icon={CheckCircle} color="text-emerald-400" />
-          <StatCard label="Avg Trust Score" value={avgTrust} icon={Star} color="text-amber-400" />
-          <StatCard label="Sentinel Permanent" value={permanentCount} icon={Activity} color="text-blue-400" />
+          {[
+            { label: 'Total IDs on Network', value: loadingStats ? '—' : stats.total.toLocaleString(), icon: Globe, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+            { label: 'Verified Residents', value: loadingStats ? '—' : stats.verified.toLocaleString(), icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+            { label: 'Sentinel Permanent', value: loadingStats ? '—' : stats.permanent.toLocaleString(), icon: Shield, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+            { label: 'Lookups This Session', value: searchHistory.length.toString(), icon: BarChart2, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+          ].map(({ label, value, icon: Icon, color, bg, border }) => (
+            <div key={label} className={`p-4 rounded-xl border ${border} ${bg}`}
+              style={{ background: 'rgba(10,15,30,0.8)', backdropFilter: 'blur(10px)' }}>
+              <div className="flex items-start justify-between mb-2">
+                <Icon className={`w-4 h-4 ${color}`} />
+              </div>
+              <p className={`text-2xl font-black font-mono ${color}`}>{value}</p>
+              <p className="text-xs text-slate-500 mt-1 leading-tight">{label}</p>
+            </div>
+          ))}
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
-          <div className="md:col-span-2 p-6 rounded-2xl border border-slate-800/60"
-            style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
-            <h3 className="text-sm font-semibold text-white mb-1">Weekly Verification Trend</h3>
-            <p className="text-xs text-slate-600 mb-5">New IDs registered vs vouches issued — last 8 weeks</p>
-            <ResponsiveContainer width="100%" height={210}>
-              <AreaChart data={weeklyTrend} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                <defs>
-                  <linearGradient id="gNewIDs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4ade80" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gVouches" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend formatter={v => <span style={{ fontSize: 11, color: '#64748b' }}>{v}</span>} />
-                <Area type="monotone" dataKey="New IDs" stroke="#4ade80" strokeWidth={2} fill="url(#gNewIDs)" dot={false} />
-                <Area type="monotone" dataKey="Vouches" stroke="#3b82f6" strokeWidth={2} fill="url(#gVouches)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
+        {/* Main Search */}
+        <div className="rounded-2xl border border-slate-800/60 overflow-hidden"
+          style={{ background: 'rgba(10,15,30,0.9)', backdropFilter: 'blur(20px)' }}>
+
+          <div className="px-6 py-4 border-b border-slate-800/60 flex items-center gap-3">
+            <Search className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-semibold text-white">Identity Verification Search</span>
+            <span className="ml-auto text-xs text-slate-600 font-mono">Enter Sentinel ID to verify</span>
           </div>
 
-          <div className="p-6 rounded-2xl border border-slate-800/60"
-            style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
-            <h3 className="text-sm font-semibold text-white mb-5">Residency Tier Distribution</h3>
-            <div className="space-y-4">
-              {tierData.map((t) => {
-                const pct = totalIDs ? Math.round((t.value / totalIDs) * 100) : 0;
-                const fullName = t.name === 'Permanent' ? 'Sentinel Permanent' : t.name;
-                const color = TIER_COLORS[fullName] || '#64748b';
-                return (
-                  <div key={t.name}>
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-slate-400">{t.name}</span>
-                      <span className="font-mono" style={{ color }}>{t.value} <span className="text-slate-600">({pct}%)</span></span>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, background: color, boxShadow: `0 0 8px ${color}50` }} />
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="p-6">
+            <div className="flex gap-3 mb-2">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={handleInput}
+                  onKeyDown={handleKeyDown}
+                  placeholder="XXXX-XXXX-XXXX-XXX"
+                  className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-3.5 text-white text-base outline-none focus:border-blue-500/60 placeholder-slate-600 font-mono tracking-widest"
+                  maxLength={19}
+                />
+                <div className="absolute right-3 top-3.5 flex items-center gap-1.5">
+                  <span className="text-xs text-slate-600 font-mono">{query.replace(/-/g,'').length}/15</span>
+                </div>
+              </div>
+              <button onClick={handleSearch} disabled={searching || query.length < 4}
+                className="px-8 py-3.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold text-sm transition-all disabled:opacity-40 flex items-center gap-2 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                {searching
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
+                  : <><Zap className="w-4 h-4" /> Verify</>}
+              </button>
             </div>
-            <div className="mt-6 flex flex-col items-center">
-              <div className="relative w-28 h-28">
-                <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1e293b" strokeWidth="10" />
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#4ade80" strokeWidth="10"
-                    strokeDasharray={`${2 * Math.PI * 38 * verificationRate / 100} ${2 * Math.PI * 38}`}
-                    strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 6px #4ade80)' }} />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold text-white font-mono">{verificationRate}%</span>
-                  <span className="text-xs text-slate-600">verified</span>
+            <p className="text-xs text-slate-600 font-mono">Format: XXXX-XXXX-XXXX-XXX</p>
+          </div>
+
+          {notFound && (
+            <div className="px-6 pb-6">
+              <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20 flex items-center gap-3">
+                <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-400">Sentinel ID Not Found</p>
+                  <p className="text-xs text-slate-500 mt-0.5">No verified address found for this ID. The customer may not have registered yet.</p>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
+        {/* Verification Result */}
+        {result && (
+          <VerificationCard
+            result={result}
+            landmarks={landmarks}
+            onClose={() => { setResult(null); setLandmarks([]); setQuery(''); }}
+          />
+        )}
+
+        {/* Bottom grid: History + API */}
         <div className="grid md:grid-cols-2 gap-5">
-          <div className="p-6 rounded-2xl border border-slate-800/60"
-            style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
-            <h3 className="text-sm font-semibold text-white mb-1">Regional Coverage</h3>
-            <p className="text-xs text-slate-600 mb-5">Total vs verified Sentinel IDs per country</p>
-            {countryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={countryData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="country" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend formatter={v => <span style={{ fontSize: 11, color: '#64748b' }}>{v}</span>} />
-                  <Bar dataKey="total" name="Total" radius={[3, 3, 0, 0]}>
-                    {countryData.map((d) => <Cell key={d.country} fill={COUNTRY_COLORS[d.country] || '#64748b'} fillOpacity={0.4} />)}
-                  </Bar>
-                  <Bar dataKey="verified" name="Verified" radius={[3, 3, 0, 0]}>
-                    {countryData.map((d) => <Cell key={d.country} fill={COUNTRY_COLORS[d.country] || '#64748b'} fillOpacity={0.9} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-700">
-                <Globe className="w-10 h-10 mb-2" />
-                <p className="text-sm">No geographic data yet</p>
+
+          {/* Search History */}
+          <div className="rounded-2xl border border-slate-800/60 overflow-hidden"
+            style={{ background: 'rgba(10,15,30,0.9)', backdropFilter: 'blur(20px)' }}>
+            <div className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-500" />
+              <span className="text-sm font-semibold text-white">Recent Lookups</span>
+              <span className="ml-auto text-xs text-slate-600">{searchHistory.length} this session</span>
+            </div>
+            <div className="divide-y divide-slate-800/40">
+              {searchHistory.length === 0 ? (
+                <div className="px-5 py-8 text-center">
+                  <Search className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+                  <p className="text-sm text-slate-600">No lookups yet this session.</p>
+                  <p className="text-xs text-slate-700 mt-1">Search a Sentinel ID above to begin.</p>
+                </div>
+              ) : (
+                searchHistory.map((h) => (
+                  <button key={h.id} onClick={() => { setQuery(h.id); }}
+                    className="w-full flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors text-left">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      h.status === 'Sentinel Permanent' ? 'bg-emerald-400'
+                      : h.status === 'Resident' ? 'bg-blue-400' : 'bg-amber-400'
+                    }`} />
+                    <span className="text-sm font-mono text-white flex-1">{h.id}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-slate-600">{new Date(h.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className={`text-xs font-bold font-mono ${
+                        h.score >= 70 ? 'text-emerald-400' : h.score >= 50 ? 'text-blue-400' : 'text-amber-400'
+                      }`}>{h.score}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+            {searchHistory.length > 0 && (
+              <div className="px-5 py-3 border-t border-slate-800/40">
+                <button onClick={() => { setSearchHistory([]); localStorage.removeItem('vs_search_history'); }}
+                  className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+                  Clear session history
+                </button>
               </div>
             )}
           </div>
 
-          <div className="p-6 rounded-2xl border border-slate-800/60"
-            style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
-            <h3 className="text-sm font-semibold text-white mb-1">Trust Score Distribution</h3>
-            <p className="text-xs text-slate-600 mb-5">How users are spread across trust bands</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={trustBuckets} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="range" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" name="Users" radius={[3, 3, 0, 0]}>
-                  {trustBuckets.map((b, i) => {
-                    const colors = ['#64748b', '#3b82f6', '#60a5fa', '#4ade80', '#22c55e'];
-                    return <Cell key={b.range} fill={colors[i]} fillOpacity={0.85} />;
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-5">
-          <div className="p-6 rounded-2xl border border-slate-800/60"
-            style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
-            <h3 className="text-sm font-semibold text-white mb-5">Average Trust Score by Country</h3>
-            <div className="space-y-3">
-              {avgTrustByCountry.length > 0 ? avgTrustByCountry.map(({ country, avgTrust: avg, count }) => (
-                <div key={country}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-400">{country}</span>
-                    <span className="font-mono" style={{ color: COUNTRY_COLORS[country] || '#64748b' }}>
-                      {avg} pts <span className="text-slate-600">({count} IDs)</span>
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${avg}%`, background: COUNTRY_COLORS[country] || '#64748b' }} />
-                  </div>
-                </div>
-              )) : <p className="text-slate-600 text-sm text-center py-6">No data yet</p>}
+          {/* API Access */}
+          <div className="rounded-2xl border border-slate-800/60 overflow-hidden"
+            style={{ background: 'rgba(10,15,30,0.9)', backdropFilter: 'blur(20px)' }}>
+            <div className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-2">
+              <Key className="w-4 h-4 text-slate-500" />
+              <span className="text-sm font-semibold text-white">API Integration</span>
+              <span className="ml-auto px-2 py-0.5 rounded-full text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400 font-semibold">Pro Plan</span>
             </div>
-          </div>
+            <div className="p-5 space-y-4">
 
-          <div className="p-6 rounded-2xl border border-slate-800/60"
-            style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(12px)' }}>
-            <h3 className="text-sm font-semibold text-white mb-1">Top Density Zones</h3>
-            <p className="text-xs text-slate-600 mb-5">H3 district-level hexagon clusters with most registrations</p>
-            {topDistricts.length > 0 ? (
-              <div className="space-y-2">
-                {topDistricts.map(({ hex, count }, i) => (
-                  <div key={hex} className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/20">
-                    <span className="text-xs font-bold text-slate-600 w-5 text-right">#{i + 1}</span>
-                    <span className="text-xs font-mono text-slate-400 flex-1">{hex}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1 rounded-full bg-green-500/20 overflow-hidden" style={{ width: 60 }}>
-                        <div className="h-full rounded-full bg-green-500"
-                          style={{ width: `${Math.round((count / (topDistricts[0]?.count || 1)) * 100)}%` }} />
-                      </div>
-                      <span className="text-xs font-mono text-green-400">{count}</span>
-                    </div>
+              {/* API Key */}
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Live API Key</p>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-900/60 border border-slate-700/40">
+                  <code className="text-xs text-slate-300 flex-1 font-mono truncate">
+                    {apiKeyVisible ? DEMO_API_KEY : DEMO_API_KEY.replace(/vs_live_sk_ug_(.+)/, 'vs_live_sk_ug_' + '•'.repeat(32))}
+                  </code>
+                  <button onClick={() => setApiKeyVisible(!apiKeyVisible)}
+                    className="text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0">
+                    {apiKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                  <button onClick={() => handleCopy(DEMO_API_KEY, 'apikey')}
+                    className="text-slate-500 hover:text-blue-400 transition-colors flex-shrink-0">
+                    {copied === 'apikey' ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick integration example */}
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Quick Integration</p>
+                <div className="p-3 rounded-lg bg-black/40 border border-slate-800/60">
+                  <pre className="text-xs text-slate-300 overflow-x-auto leading-relaxed">
+{`GET /v1/verify/{sentinel_id}
+Authorization: Bearer vs_live_sk_ug_...
+
+{
+  "sentinel_id": "XXXX-XXXX-XXXX-XXX",
+  "trust_score": 82,
+  "status": "Resident",
+  "risk_level": "LOW",
+  "last_mile_blueprint": [...],
+  "google_maps_link": "https://..."
+}`}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Plan details */}
+              <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/15 space-y-2">
+                <p className="text-xs text-blue-400 font-semibold">Current Plan: Pro</p>
+                {[
+                  '10,000 API calls / month included',
+                  '$0.25 per call after limit',
+                  'SLA: 99.9% uptime guaranteed',
+                  'Priority support via email',
+                ].map(item => (
+                  <div key={item} className="flex items-center gap-2">
+                    <CheckCircle className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                    <span className="text-xs text-slate-400">{item}</span>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-700">
-                <Layers className="w-10 h-10 mb-2" />
-                <p className="text-sm">No zone data yet</p>
-              </div>
-            )}
+
+              <a href="https://tegusystems.com" target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-blue-500/30 text-blue-400 text-xs font-semibold hover:bg-blue-500/10 transition-all">
+                <FileText className="w-3.5 h-3.5" /> View API Documentation
+              </a>
+            </div>
           </div>
         </div>
+
+        {/* Compliance Notice */}
+        <div className="p-4 rounded-xl border border-slate-800/40 flex items-start gap-3"
+          style={{ background: 'rgba(10,15,30,0.6)' }}>
+          <Lock className="w-4 h-4 text-slate-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs text-slate-500">
+              <span className="text-slate-400 font-semibold">Data Protection: </span>
+              Verify Sentinel does not store or transmit National ID numbers through this dashboard. All verification queries are logged for your compliance audit trail. Data is processed in accordance with Uganda's Data Protection and Privacy Act 2019 and equivalent legislation in supported territories.
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
   );
