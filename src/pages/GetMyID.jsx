@@ -415,7 +415,8 @@ export default function GetMyID({ lang = 'en' }) {
                   zoomControl={false}
                   attributionControl={false}
                 >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" maxZoom={19} />
+                  <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution=" &copy; Google Maps" maxZoom={21}/ >
+     
                   <MapClickHandler onMapClick={handleMapClick} />
                   {currentH3 && <HexPolygon h3Index={currentH3} phase={phase} />}
                   {manualPin && <Marker position={[manualPin.lat, manualPin.lng]} />}
