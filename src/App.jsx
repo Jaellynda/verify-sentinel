@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/api/base44Client';
 import PageNotFound from './lib/PageNotFound';
 import Login from './pages/Login';
-import Home from './pages/Home';
+import Landing from './pages/Landing';
 import GetMyID from './pages/GetMyID';
 import Dashboard from './pages/Dashboard';
 import Verify from './pages/Verify';
@@ -49,14 +49,14 @@ function App() {
       <Router>
         <Routes>
           {/* Public routes */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Landing lang={lang} />} />
           <Route path="/login" element={
             session ? <Navigate to="/dashboard" replace /> : <Login />
           } />
           <Route path="/verify" element={<Verify lang={lang} />} />
           <Route path="/verification-guide" element={<VerificationGuide />} />
 
-          {/* Protected routes — require login */}
+          {/* Protected routes */}
           <Route path="/get-id" element={
             <ProtectedRoute session={session}>
               <OnboardingFlow />
