@@ -1,80 +1,107 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/api/base44Client';
 import PageNotFound from './lib/PageNotFound';
-import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Home from './pages/Home';
 import GetMyID from './pages/GetMyID';
 import Dashboard from './pages/Dashboard';
 import Verify from './pages/Verify';
 import Navbar from './components/Navbar';
 import HelpSupport from './pages/HelpSupport';
 import AdminAnalytics from './pages/AdminAnalytics';
-import { useState } from 'react';
 import HexMap from './pages/HexMap';
 import OnboardingFlow from './components/OnboardingFlow';
 import VerificationGuide from './pages/VerificationGuide';
 import BusinessDashboard from './pages/BusinessDashboard';
-// Add page imports here
 
-const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
-  const [lang, setLang] = useState('en');
-
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
+function ProtectedRoute({ session, children }) {
+  if (session === undefined) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#060B13' }}>
+        <div className="w-8 h-8 border-4 border-slate-800 border-t-green-500 rounded-full animate-spin" />
       </div>
     );
   }
-
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
-    }
-  }
-
-  return (
-    <>
-      <OnboardingFlow />
-      <Navbar lang={lang} onLangChange={setLang} />
-      <Routes>
-        <Route path="/" element={<Landing lang={lang} />} />
-        <Route path="/get-id" element={<GetMyID lang={lang} />} />
-        <Route path="/dashboard" element={<Dashboard lang={lang} />} />
-        <Route path="/verify" element={<Verify lang={lang} />} />
-        <Route path="/help" element={<HelpSupport lang={lang} />} />
-        <Route path="/admin" element={<AdminAnalytics lang={lang} />} />
-        <Route path="/map" element={<HexMap lang={lang} />} />
-        <Route path="/verification-guide" element={<VerificationGuide />} />
-        <Route path="/business" element={<BusinessDashboard lang={lang} />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </>
-  );
-};
-
-
-function App() {
-
-  return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
-  )
+  if (!session) return <Navigate to="/login" replace />;
+  return children;
 }
 
-export default App
+function App() {
+  const [session, setSession] = useState(undefined);
+  const [lang, setLang] = useState('en');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={
+            session ? <Navigate to="/dashboard" replace /> : <Login />
+          } />
+          <Route path="/verify" element={<Verify lang={lang} />} />
+          <Route path="/verification-guide" element={<VerificationGuide />} />
+
+          {/* Protected routes — require login */}
+          <Route path="/get-id" element={
+            <ProtectedRoute session={session}>
+              <OnboardingFlow />
+              <Navbar lang={lang} onLangChange={setLang} />
+              <GetMyID lang={lang} />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute session={session}>
+              <OnboardingFlow />
+              <Navbar lang={lang} onLangChange={setLang} />
+              <Dashboard lang={lang} />
+            </ProtectedRoute>
+          } />
+          <Route path="/help" element={
+            <ProtectedRoute session={session}>
+              <Navbar lang={lang} onLangChange={setLang} />
+              <HelpSupport lang={lang} />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute session={session}>
+              <Navbar lang={lang} onLangChange={setLang} />
+              <AdminAnalytics lang={lang} />
+            </ProtectedRoute>
+          } />
+          <Route path="/map" element={
+            <ProtectedRoute session={session}>
+              <Navbar lang={lang} onLangChange={setLang} />
+              <HexMap lang={lang} />
+            </ProtectedRoute>
+          } />
+          <Route path="/business" element={
+            <ProtectedRoute session={session}>
+              <Navbar lang={lang} onLangChange={setLang} />
+              <BusinessDashboard lang={lang} />
+            </ProtectedRoute>
+          } />
+
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Router>
+      <Toaster />
+    </QueryClientProvider>
+  );
+}
+
+export default App;
