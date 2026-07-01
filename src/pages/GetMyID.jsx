@@ -699,4 +699,3 @@ export default function GetMyID({ lang = 'en' }) {
     </div>
   );
 }
-
