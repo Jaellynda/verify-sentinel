@@ -17,7 +17,7 @@ export default function Login() {
     setError('');
 
     const redirectTo = accountType === 'business'
-      ? 'https://verify-sentinel.tegusystems.com/verify'
+      ? 'https://verify-sentinel.tegusystems.com/business'
       : 'https://verify-sentinel.tegusystems.com/get-id';
 
     const { error } = await supabase.auth.signInWithOtp({
