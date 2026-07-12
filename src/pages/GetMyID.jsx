@@ -15,6 +15,7 @@ import LandmarkMapper from '../components/LandmarkMapper';
 import HexBackground from '../components/HexBackground';
 import { latLngToCell, cellToBoundary } from 'h3-js';
 
+// Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -35,11 +36,13 @@ const STATUS_STAGES = [
   { phase: 'refining',  text: 'Refining location — improving precision...', color: 'text-blue-400' },
   { phase: 'locked',    text: '✓ Sentinel ID Locked — high precision confirmed', color: 'text-emerald-400' },
   { phase: 'manual',    text: '✓ Manual location confirmed — Sentinel ID ready', color: 'text-emerald-400' },
-  { phase: 'error',     text: 'GPS signal weak — tap your rooftop on the map to place manually', color: 'text-amber-400' },
+  { phase: 'error',     text: 'GPS unavailable — use manual map placement', color: 'text-red-400' },
 ];
 
 function MapClickHandler({ onMapClick }) {
-  useMapEvents({ click(e) { onMapClick(e.latlng.lat, e.latlng.lng); } });
+  useMapEvents({
+    click(e) { onMapClick(e.latlng.lat, e.latlng.lng); }
+  });
   return null;
 }
 
@@ -125,10 +128,8 @@ export default function GetMyID({ lang = 'en' }) {
   const [savedAddress, setSavedAddress] = useState(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [blueDotPosition, setBlueDotPosition] = useState(null);
-  const [mapStyle, setMapStyle] = useState('satellite');
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -160,12 +161,7 @@ export default function GetMyID({ lang = 'en' }) {
         if (mapRef.current) mapRef.current.setView([latitude, longitude], res === 7 ? 14 : res === 8 ? 16 : 18);
         if (res === 10) finalizeSentinel(latitude, longitude, h3);
       },
-      () => {
-        // Only show error if GPS hasn't kicked in yet
-        setTimeout(() => {
-          setPhase(prev => prev === 'searching' ? 'error' : prev);
-        }, 3000);
-      },
+      () => { setPhase('error'); },
       { enableHighAccuracy: false, maximumAge: 60000, timeout: 5000 }
     );
 
@@ -185,11 +181,7 @@ export default function GetMyID({ lang = 'en' }) {
           navigator.geolocation.clearWatch(watchRef.current);
         }
       },
-      () => {
-        setTimeout(() => {
-          setPhase(prev => prev === 'searching' ? 'error' : prev);
-        }, 3000);
-      },
+      () => { setPhase('error'); },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
     );
   }, []);
@@ -217,28 +209,22 @@ export default function GetMyID({ lang = 'en' }) {
     return () => { if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current); };
   }, []);
 
+  // ── SAVE ADDRESS — now using Supabase ──
   const handleSaveAddress = async (landmarks = []) => {
     if (!sentinelData || !canSave) return;
     setSaving(true);
-    setSaveError('');
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        setSaveError('You must be logged in to save your address. Please sign in and try again.');
-        setSaving(false);
-        return;
-      }
-
       const googleLink = generateGoogleMapsLink(sentinelData.center.lat, sentinelData.center.lng);
       const appleLink = generateAppleMapsLink(sentinelData.center.lat, sentinelData.center.lng);
 
+      // Insert sentinel address
       const { data: addressRecord, error: addressError } = await supabase
         .from('sentinel_addresses')
         .insert({
-          user_id: user.id,
-          user_email: user.email,
+          user_id: user?.id,
+          user_email: user?.email,
           residency_type: residencyType,
           sentinel_id: sentinelData.sentinel_id,
           h3_index: sentinelData.h3_index,
@@ -259,22 +245,19 @@ export default function GetMyID({ lang = 'en' }) {
         .select()
         .single();
 
-      if (addressError) {
-        console.error('Address save error:', addressError);
-        setSaveError(`Failed to save address: ${addressError.message}`);
-        setSaving(false);
-        return;
-      }
+      if (addressError) throw addressError;
 
+      // Insert initial trust score history
       await supabase.from('trust_score_history').insert({
         sentinel_address_id: addressRecord.id,
-        user_id: user.id,
-        user_email: user.email,
+        user_id: user?.id,
+        user_email: user?.email,
         score: 30,
         event: 'initial',
         notes: 'Address created',
       });
 
+      // Insert landmarks
       if (landmarks.length > 0) {
         const landmarkRows = landmarks.map(lm => ({
           sentinel_address_id: addressRecord.id,
@@ -287,15 +270,13 @@ export default function GetMyID({ lang = 'en' }) {
           language: lang,
           is_primary: lm.is_primary,
         }));
-        const { error: landmarkError } = await supabase.from('landmark_descriptions').insert(landmarkRows);
-        if (landmarkError) console.error('Landmark save error:', landmarkError);
+        await supabase.from('landmark_descriptions').insert(landmarkRows);
       }
 
       setSavedAddress(addressRecord);
       setStep(2);
     } catch (err) {
       console.error('Failed to save address:', err);
-      setSaveError('Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -310,6 +291,7 @@ export default function GetMyID({ lang = 'en' }) {
   const handleDownloadPDF = async () => {
     if (!savedAddress) return;
     const { jsPDF } = await import('jspdf');
+    const qrCanvas = document.createElement('canvas');
     await new Promise((resolve) => {
       if (window.QRCode) { resolve(); return; }
       const s = document.createElement('script');
@@ -424,77 +406,38 @@ export default function GetMyID({ lang = 'en' }) {
           <div className="rounded-3xl border border-zinc-800 overflow-hidden" style={{ background: '#18181b' }}>
             <div className="h-px bg-gradient-to-r from-transparent via-green-500/30 to-transparent" />
             {showMap && (
-              <div className="relative" style={{ height: 260 }}>
+              <div className="relative" style={{ height: 240 }}>
                 <MapContainer
                   center={coords ? [coords.latitude, coords.longitude] : [0.3476, 32.5825]}
-                  zoom={18}
+                  zoom={16}
                   style={{ height: '100%', width: '100%', background: '#060B13' }}
                   ref={mapRef}
                   zoomControl={false}
                   attributionControl={false}
                 >
-                  {mapStyle === 'satellite' ? (
-                    <TileLayer
-                      url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                      attribution="&copy; Google Maps"
-                      maxZoom={21}
-                    />
-                  ) : (
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution="&copy; OpenStreetMap"
-                      maxZoom={19}
-                    />
-                  )}
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" maxZoom={19} />
                   <MapClickHandler onMapClick={handleMapClick} />
                   {currentH3 && <HexPolygon h3Index={currentH3} phase={phase} />}
                   {manualPin && <Marker position={[manualPin.lat, manualPin.lng]} />}
                   <BlueDot position={blueDotPosition} />
                 </MapContainer>
-
-                {/* Map style toggle */}
-                <div className="absolute top-2 left-2 z-[500] flex rounded-lg overflow-hidden"
-                  style={{ border: '1px solid rgba(255,255,255,0.15)' }}>
-                  <button onClick={() => setMapStyle('satellite')}
-                    className={`px-3 py-1.5 text-xs font-semibold transition-all ${
-                      mapStyle === 'satellite'
-                        ? 'bg-white text-black'
-                        : 'bg-black/70 text-slate-300 hover:bg-black/90'
-                    }`}>
-                    Satellite
-                  </button>
-                  <button onClick={() => setMapStyle('street')}
-                    className={`px-3 py-1.5 text-xs font-semibold transition-all ${
-                      mapStyle === 'street'
-                        ? 'bg-white text-black'
-                        : 'bg-black/70 text-slate-300 hover:bg-black/90'
-                    }`}>
-                    Street
-                  </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                  style={{ background: 'rgba(13,31,60,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(59,130,246,0.25)' }}>
+                  <MapPin className="w-3 h-3 text-blue-400" />
+                  <span className="text-slate-400">Tap anywhere on map to manually place your location</span>
                 </div>
-
-                {/* Manual pin hint */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap"
-                  style={{ background: 'rgba(13,31,60,0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(59,130,246,0.25)' }}>
-                  <MapPin className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                  <span className="text-slate-400">Tap your rooftop to place pin manually</span>
-                </div>
-
-                {/* Precision badge */}
                 {currentRes && (
-                  <div className={`absolute top-2 right-2 z-[500] px-2.5 py-1 rounded-full text-xs font-bold ${badge.bg} ${badge.text}`}
-                    style={{ backdropFilter: 'blur(8px)', border: '1px solid currentColor', opacity: 0.95 }}>
+                  <div className={`absolute top-2 right-2 px-2.5 py-1 rounded-full text-xs font-bold ${badge.bg} ${badge.text}`}
+                    style={{ backdropFilter: 'blur(8px)', border: '1px solid currentColor', opacity: 0.9 }}>
                     {badge.label}
                   </div>
                 )}
               </div>
             )}
-
             <div className="p-6">
               <div className="flex justify-center mb-4">
                 <HexLockAnimation phase={phase} />
               </div>
-
               <div className="flex items-center gap-2 justify-center mb-4">
                 {(phase === 'searching' || phase === 'ghost' || phase === 'refining') && (
                   <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
@@ -502,16 +445,15 @@ export default function GetMyID({ lang = 'en' }) {
                 {(phase === 'locked' || phase === 'manual') && (
                   <div className="w-2 h-2 rounded-full bg-emerald-400" />
                 )}
-                {phase === 'error' && <div className="w-2 h-2 rounded-full bg-amber-400" />}
-                <span className={`text-sm font-medium text-center ${statusStage.color}`}>{statusStage.text}</span>
+                {phase === 'error' && <div className="w-2 h-2 rounded-full bg-red-400" />}
+                <span className={`text-sm font-medium ${statusStage.color}`}>{statusStage.text}</span>
               </div>
-
               {accuracy !== null && phase !== 'manual' && (
                 <div className="mb-4">
                   <div className="flex justify-between text-xs text-slate-600 mb-1">
                     <span>GPS Accuracy</span>
                     <span className={accuracy <= 10 ? 'text-emerald-400 font-bold' : accuracy <= 50 ? 'text-blue-400' : 'text-amber-400'}>
-                      ±{accuracy}m {accuracy <= 10 ? '✓ Ready to save' : accuracy <= 50 ? '— refining…' : '— searching…'}
+                      ±{accuracy}m {accuracy <= 10 ? '✓ Save enabled' : accuracy <= 50 ? '— refining…' : '— searching…'}
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
@@ -523,7 +465,6 @@ export default function GetMyID({ lang = 'en' }) {
                   </div>
                 </div>
               )}
-
               {sentinelData && (
                 <div className={`p-3 rounded-2xl border mb-4 transition-all ${
                   phase === 'locked' || phase === 'manual'
@@ -556,12 +497,11 @@ export default function GetMyID({ lang = 'en' }) {
                   </div>
                 </div>
               )}
-
               {phase === 'idle' || phase === 'error' ? (
                 <button onClick={acquireGPS}
                   className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(74,222,128,0.25)]">
                   <Navigation className="w-5 h-5" />
-                  {phase === 'error' ? 'Try GPS Again' : 'Acquire GPS Signal'}
+                  {phase === 'error' ? 'Retry GPS — or tap map to place manually' : 'Acquire GPS Signal'}
                 </button>
               ) : (
                 <div className="space-y-3">
@@ -576,14 +516,18 @@ export default function GetMyID({ lang = 'en' }) {
                     ) : (
                       <><Crosshair className="w-5 h-5 animate-spin" style={{ animationDuration: '3s' }} />
                         {accuracy !== null
-                          ? `Refining accuracy (±${accuracy}m) — or tap your rooftop on the map`
-                          : 'Acquiring GPS fix — or tap your rooftop on the map'}
+                          ? `Waiting for ≤10m accuracy (currently ±${accuracy}m)…`
+                          : 'Acquiring high-accuracy fix…'}
                       </>
                     )}
                   </button>
+                  {phase !== 'manual' && !canSave && (
+                    <p className="text-center text-xs text-slate-600">
+                      GPS taking too long? <span className="text-blue-500">Tap your roof on the map above</span> to place manually.
+                    </p>
+                  )}
                 </div>
               )}
-
               {phase !== 'idle' && phase !== 'error' && (
                 <div className="mt-4 p-3 rounded-xl bg-slate-900/40 border border-slate-700/30">
                   <label className="text-xs text-slate-500 uppercase tracking-wider mb-2 block">Residency Type</label>
@@ -602,11 +546,10 @@ export default function GetMyID({ lang = 'en' }) {
                     ))}
                   </div>
                   {residencyType === 'Guest' && (
-                    <p className="text-xs text-amber-500/70 mt-2">Guest addresses are capped at Resident tier.</p>
+                    <p className="text-xs text-amber-500/70 mt-2">⚠ Guest addresses are capped at Resident tier and cannot reach Sentinel Permanent.</p>
                   )}
                 </div>
               )}
-
               <div className="flex items-center justify-center gap-1.5 mt-4">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-xs text-emerald-600">{tr('forge_offline_safe')} — our technology runs entirely on-device</span>
@@ -629,7 +572,7 @@ export default function GetMyID({ lang = 'en' }) {
               <div className="w-2 h-2 rounded-full bg-emerald-400" />
               <span className="text-xs text-slate-400 font-mono">{sentinelData?.sentinel_id}</span>
               <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
-                {phase === 'manual' ? 'Manual Pin' : `±${accuracy}m`}
+                {phase === 'manual' ? 'Manual' : `±${accuracy}m`}
               </span>
             </div>
             <LandmarkMapper
@@ -641,11 +584,6 @@ export default function GetMyID({ lang = 'en' }) {
               <div className="flex items-center justify-center gap-2 mt-4 text-blue-400">
                 <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
                 <span className="text-sm">Saving your Sentinel Address...</span>
-              </div>
-            )}
-            {saveError && (
-              <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                <p className="text-xs text-red-400">{saveError}</p>
               </div>
             )}
           </div>
@@ -686,7 +624,7 @@ export default function GetMyID({ lang = 'en' }) {
               </button>
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-left">
                 <p className="text-xs text-amber-400 font-semibold mb-0.5">Status: Visitor</p>
-                <p className="text-xs text-slate-500">Check in from this location for 3 consecutive nights to achieve Resident status.</p>
+                <p className="text-xs text-slate-500">Check in from this location for 3 consecutive nights to achieve Verified status.</p>
               </div>
             </div>
             <button onClick={() => navigate('/dashboard')}
