@@ -26,8 +26,7 @@ export default function Navbar({ lang, onLangChange }) {
   ];
 
   const businessNav = [
-    { path: '/verify', label: 'Verify Client' },
-    { path: '/business', label: 'Business Dashboard' },
+    { path: '/business', label: 'KYC Console' },
     { path: '/map', label: 'Coverage Map' },
     { path: '/help', label: 'Help' },
   ];
