@@ -3,16 +3,16 @@ import { Plus, MapPin, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/api/base44Client';
 
 const LANDMARK_TYPES = [
-  { key: 'Kiosk', icon: '🏪', label: 'Kiosk' },
-  { key: 'Petrol Station', icon: '⛽', label: 'Petrol Stn' },
-  { key: 'School', icon: '🏫', label: 'School' },
-  { key: 'Church/Mosque', icon: '🕌', label: 'Church/Mosque' },
-  { key: 'Borehole', icon: '💧', label: 'Borehole' },
-  { key: 'Market', icon: '🛒', label: 'Market' },
-  { key: 'Clinic/Hospital', icon: '🏥', label: 'Clinic' },
-  { key: 'Bar/Restaurant', icon: '🍺', label: 'Bar/Rest.' },
-  { key: 'Road Junction', icon: '🛤️', label: 'Junction' },
-  { key: 'Tree/Natural', icon: '🌳', label: 'Tree/Nature' },
+  { key: 'Kiosk', icon: '', label: 'Kiosk' },
+  { key: 'Petrol Station', icon: '', label: 'Petrol Stn' },
+  { key: 'School', icon: '', label: 'School' },
+  { key: 'Church/Mosque', icon: '', label: 'Church/Mosque' },
+  { key: 'Borehole', icon: '', label: 'Borehole' },
+  { key: 'Market', icon: '', label: 'Market' },
+  { key: 'Clinic/Hospital', icon: '', label: 'Clinic' },
+  { key: 'Bar/Restaurant', icon: '', label: 'Bar/Rest.' },
+  { key: 'Road Junction', icon: '', label: 'Junction' },
+  { key: 'Tree/Natural', icon: '', label: 'Tree/Nature' },
 ];
 
 const DIRECTIONS = ['North', 'South', 'East', 'West', 'Behind', 'In Front', 'Left', 'Right', 'Opposite'];
