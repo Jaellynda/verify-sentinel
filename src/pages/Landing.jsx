@@ -218,7 +218,7 @@ export default function Landing({ lang = 'en' }) {
 
           <div className="p-6 rounded-3xl border border-zinc-700"
             style={{ background: '#18181b' }}>
-            <h3 className="text-lg font-bold text-white text-center mb-6">Pin Drop vs. Sentinel ID — Last-Mile Delivery</h3>
+            <h3 className="text-lg font-bold text-white text-center mb-6">Pin Drop vs. Sentinel ID: Last-Mile Delivery</h3>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-5 rounded-2xl border border-red-900/40 bg-red-950/20">
                 <div className="flex items-center gap-2 mb-4">
