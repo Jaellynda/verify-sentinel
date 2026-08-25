@@ -29,12 +29,12 @@ export default function Landing({ lang = 'en' }) {
   }, []);
 
   const features = [
-    { icon: '📍', title: 'Precision Location Identity', desc: 'Stable location zones that don\'t change when you move a few steps — your address stays yours.' },
-    { icon: '📡', title: '100% Offline Generation', desc: 'Sentinel ID computed entirely on-device from your GPS signal. Zero data or internet needed.' },
-    { icon: '🔒', title: 'Anti-Fraud Persistence', desc: '3-consecutive-night detection algorithm prevents fake address claims. Trust score builds over time.' },
-    { icon: '🌍', title: 'East African First', desc: 'Built for Uganda, Kenya, Rwanda, DRC — with open architecture for all East & Central African nations. Supports English, Luganda, Swahili, and French.' },
-    { icon: '🚚', title: 'Last-Mile Delivery', desc: 'Deep links to Google Maps & Apple Maps from any Sentinel ID. Delivery drivers arrive first time.' },
-    { icon: '🏦', title: 'Bank-Grade Verification', desc: 'Trust Score integrates neighbor vouching + persistence data for credit-ready location identity.' },
+    { icon: '', title: 'Precision Location Identity', desc: 'Stable location zones that don\'t change when you move a few steps — your address stays yours.' },
+    { icon: '', title: '100% Offline Generation', desc: 'Sentinel ID computed entirely on-device from your GPS signal. Zero data or internet needed.' },
+    { icon: '', title: 'Anti-Fraud Persistence', desc: '3-consecutive-night detection algorithm prevents fake address claims. Trust score builds over time.' },
+    { icon: '', title: 'East African First', desc: 'Built for Uganda, Kenya, Rwanda, DRC — with open architecture for all East & Central African nations. Supports English, Luganda, Swahili, and French.' },
+    { icon: '', title: 'Last-Mile Delivery', desc: 'Deep links to Google Maps & Apple Maps from any Sentinel ID. Delivery drivers arrive first time.' },
+    { icon: '', title: 'Bank-Grade Verification', desc: 'Trust Score integrates neighbor vouching + persistence data for credit-ready location identity.' },
   ];
 
   const stats = [
